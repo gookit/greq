@@ -1,4 +1,4 @@
-package goreq
+package hreq
 
 import (
 	"encoding/json"

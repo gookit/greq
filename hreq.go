@@ -1,15 +1,15 @@
-// Package goreq is a simple http client request builder, inspired from https://github.com/dghubble/sling
-package goreq
+// Package hreq is a simple http client request builder, inspired from https://github.com/dghubble/sling
+package hreq
 
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
@@ -43,8 +43,8 @@ type HReq struct {
 }
 
 // New create
-func New() *HReq {
-	return &HReq{
+func New(baseURL ...string) *HReq {
+	h := &HReq{
 		client: http.DefaultClient,
 		method: http.MethodGet,
 		header: make(http.Header),
@@ -52,6 +52,11 @@ func New() *HReq {
 		respDecoder:  jsonDecoder{},
 		queryStructs: make([]interface{}, 0),
 	}
+
+	if len(baseURL) > 0 {
+		h.baseURL = baseURL[0]
+	}
+	return h
 }
 
 // New create an instance from current.
@@ -191,22 +196,26 @@ func (h *HReq) SetHeaders(headers http.Header) *HReq {
 }
 
 // ContentType with custom ContentType header
+//
+// Usage:
+//	// json type
+//	h.ContentType(httpctype.JSON)
+//	// form type
+//	h.ContentType(httpctype.Form)
 func (h *HReq) ContentType(value string) *HReq {
 	return h.SetHeader("ContentType", value)
+}
+
+// JSONType with json Content-Type header
+func (h *HReq) JSONType() *HReq {
+	return h.SetHeader("ContentType", httpctype.JSON)
 }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password. With HTTP Basic Authentication
 // the provided username and password are not encrypted.
 func (h *HReq) BasicAuth(username, password string) *HReq {
-	return h.SetHeader("Authorization", "Basic "+basicAuth(username, password))
-}
-
-// basicAuth returns the base64 encoded username:password for basic auth copied
-// from net/http.
-func basicAuth(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
+	return h.SetHeader("Authorization", httpreq.BuildBasicAuth(username, password))
 }
 
 // ----------- Body ------------
@@ -214,6 +223,28 @@ func basicAuth(username, password string) string {
 // Body with custom body
 func (h *HReq) Body(r io.Reader) *HReq {
 	h.bodyProvider = bodyProvider{body: r}
+	return h
+}
+
+// BodyProvider with custom body provider
+func (h *HReq) BodyProvider(bp BodyProvider) *HReq {
+	h.bodyProvider = bp
+	return h
+}
+
+// JSONBody with JSON data body
+func (h *HReq) JSONBody(jsonData interface{}) *HReq {
+	h.bodyProvider = jsonBodyProvider{
+		payload: jsonData,
+	}
+	return h
+}
+
+// FormBody with form data body
+func (h *HReq) FormBody(formData interface{}) *HReq {
+	h.bodyProvider = formBodyProvider{
+		payload: formData,
+	}
 	return h
 }
 

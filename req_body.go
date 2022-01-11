@@ -1,4 +1,4 @@
-package goreq
+package hreq
 
 import (
 	"bytes"
@@ -24,10 +24,12 @@ type bodyProvider struct {
 	body io.Reader
 }
 
+// ContentType value
 func (p bodyProvider) ContentType() string {
 	return ""
 }
 
+// Body get body reader
 func (p bodyProvider) Body() (io.Reader, error) {
 	return p.body, nil
 }
@@ -42,7 +44,7 @@ func (p jsonBodyProvider) ContentType() string {
 	return httpctype.JSON
 }
 
-// Body ger body reader
+// Body get body reader
 func (p jsonBodyProvider) Body() (io.Reader, error) {
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(p.payload)
@@ -58,10 +60,12 @@ type formBodyProvider struct {
 	payload interface{}
 }
 
+// ContentType value
 func (p formBodyProvider) ContentType() string {
 	return httpctype.Form
 }
 
+// Body get body reader
 func (p formBodyProvider) Body() (io.Reader, error) {
 	values, ok := p.payload.(url.Values)
 	if ok {
