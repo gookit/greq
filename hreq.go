@@ -13,22 +13,20 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
-// Middleware interface for client request.
-type Middleware interface {
-	Handle(*http.Request) *Response
+// RequestCreator interface
+type RequestCreator interface {
+	NewRequest(method, target string, body io.Reader) *http.Request
 }
 
-// MiddleFunc implements the Middleware interface
-type MiddleFunc func(*http.Request) *Response
-
-// Handle request
-func (mf MiddleFunc) Handle(r *http.Request) *Response {
-	return mf(r)
-}
+// RequestCreatorFunc func
+type RequestCreatorFunc func(method, target string, body io.Reader) *http.Request
 
 // HReq is an HTTP Request builder and sender.
 type HReq struct {
 	client httpreq.HttpDoer
+	// core handler.
+	// handler Middleware
+	middles []Middleware
 	// http method eg: GET,POST
 	method  string
 	header  http.Header
@@ -78,6 +76,8 @@ func (h *HReq) New() *HReq {
 	}
 }
 
+// ------------ Config ------------
+
 // Doer custom set http request doer.
 // If a nil client is given, the http.DefaultClient will be used.
 func (h *HReq) Doer(doer httpreq.HttpDoer) *HReq {
@@ -107,6 +107,11 @@ func (h *HReq) Config(fn func(doer httpreq.HttpDoer)) *HReq {
 }
 
 // ConfigHClient custom config http client.
+//
+// Usage:
+// 	h.ConfigHClient(func(hClient *http.Client) {
+//		hClient.Timeout = 30 * time.Second
+// 	})
 func (h *HReq) ConfigHClient(fn func(hClient *http.Client)) *HReq {
 	if hc, ok := h.client.(*http.Client); ok {
 		fn(hc)
@@ -117,22 +122,48 @@ func (h *HReq) ConfigHClient(fn func(hClient *http.Client)) *HReq {
 	return h
 }
 
+// Use middlewares
+func (h *HReq) Use(middles ...Middleware) *HReq {
+	return h.Middlewares(middles...)
+}
+
+// Uses middlewares
+func (h *HReq) Uses(middles ...Middleware) *HReq {
+	return h.Middlewares(middles...)
+}
+
+// Middleware use middlewares
+func (h *HReq) Middleware(middles ...Middleware) *HReq {
+	return h.Middlewares(middles...)
+}
+
+// Middlewares use middlewares
+func (h *HReq) Middlewares(middles ...Middleware) *HReq {
+	h.middles = append(h.middles, middles...)
+	return h
+}
+
 // ------------ Method ------------
-
-// Head sets the method to HEAD and request the pathURL, then return response.
-func (h *HReq) Head(pathURL string) (*http.Response, error) {
-	return h.Method(http.MethodHead).Send(pathURL)
-}
-
-// Get sets the method to GET and sets the given pathURL.
-func (h *HReq) Get(pathURL string) (*http.Response, error) {
-	return h.Method(http.MethodGet).Send(pathURL)
-}
 
 // Method set http method name.
 func (h *HReq) Method(method string) *HReq {
 	h.method = method
 	return h
+}
+
+// Head sets the method to HEAD and request the pathURL, then send request and return response.
+func (h *HReq) Head(pathURL string) (*http.Response, error) {
+	return h.Method(http.MethodHead).Send(pathURL)
+}
+
+// Get sets the method to GET and sets the given pathURL, then send request and return response.
+func (h *HReq) Get(pathURL string) (*http.Response, error) {
+	return h.Method(http.MethodGet).Send(pathURL)
+}
+
+// Post sets the method to POST and sets the given pathURL, then send request and return response.
+func (h *HReq) Post(pathURL string) (*http.Response, error) {
+	return h.Method(http.MethodGet).Send(pathURL)
 }
 
 // ----------- URL, query params ------------
@@ -203,12 +234,17 @@ func (h *HReq) SetHeaders(headers http.Header) *HReq {
 //	// form type
 //	h.ContentType(httpctype.Form)
 func (h *HReq) ContentType(value string) *HReq {
-	return h.SetHeader("ContentType", value)
+	return h.SetHeader(httpctype.Key, value)
 }
 
 // JSONType with json Content-Type header
 func (h *HReq) JSONType() *HReq {
-	return h.SetHeader("ContentType", httpctype.JSON)
+	return h.SetHeader(httpctype.Key, httpctype.JSON)
+}
+
+// UserAgent with User-Agent header setting.
+func (h *HReq) UserAgent(value string) *HReq {
+	return h.SetHeader("User-Agent", value)
 }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
@@ -310,12 +346,37 @@ func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*http.Response,
 		return nil, err
 	}
 
+	// copy headers
 	httpreq.AddHeadersToRequest(req, h.header)
 
+	// call before send.
 	if h.beforeSend != nil {
 		h.beforeSend(req)
 	}
-	return h.client.Do(req)
+
+	// do := h.buildRequestDoFunc()
+	do := h.client.Do
+	for _, m := range h.middles {
+		do = func(r *http.Request) (*http.Response, error) {
+			return m.Handle(r)
+		}
+	}
+
+	// return h.client.Do(req)
+	return do(req)
+}
+
+func (h *HReq) buildRequestDoFunc() NextFunc {
+	if len(h.middles) == 0 {
+		return h.client.Do
+	}
+
+	fn := h.client.Do
+	for _, m := range h.middles {
+		fn = m.Handle(r, fn)
+	}
+
+	return fn
 }
 
 func addQueryStructs(reqURL *url.URL, qss []interface{}) error {

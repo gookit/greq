@@ -48,6 +48,7 @@ func (p jsonBodyProvider) ContentType() string {
 func (p jsonBodyProvider) Body() (io.Reader, error) {
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(p.payload)
+
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +58,7 @@ func (p jsonBodyProvider) Body() (io.Reader, error) {
 // formBodyProvider encodes a url tagged struct value as Body for requests.
 // See https://godoc.org/github.com/google/go-querystring/query for details.
 type formBodyProvider struct {
+	// allow type: string, url.Values
 	payload interface{}
 }
 
@@ -76,5 +78,5 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 		return strings.NewReader(str), nil
 	}
 
-	return nil, errors.New("invalid playload for form data")
+	return nil, errors.New("invalid payload data for form body")
 }
