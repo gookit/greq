@@ -13,19 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mid1 struct {
-}
-
-func (m mid1) Handle(r *http.Request, next hreq.NextFunc) (*http.Response, error) {
-	dump.P("MID1+")
-	w, err := next(r)
-	dump.P("MID1-")
-	return w, err
-}
-
-var testDoer = httpreq.HttpDoerFunc(func(req *http.Request) (*http.Response, error) {
+var final = HandleFunc(func(req *http.Request) (*http.Response, error) {
 	tw := httptest.NewRecorder()
-	dump.P("CORE+")
+	dump.P("CORE++")
 
 	_, err := tw.WriteString(req.RequestURI + " > ")
 	if err != nil {
@@ -33,7 +23,7 @@ var testDoer = httpreq.HttpDoerFunc(func(req *http.Request) (*http.Response, err
 	}
 
 	_, err = tw.Write(fsutil.MustReadReader(req.Body))
-	dump.P("CORE-")
+	dump.P("CORE--")
 
 	return tw.Result(), err
 })
@@ -65,16 +55,26 @@ func TestBuild_Middleware(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	do := testDoer
+	do := final
 	for _, m := range middles {
 		do = func(r *http.Request) (*http.Response, error) {
-			return m.Handle(r)
+			return m(r, do)
 		}
 	}
 
 	resp, err := do(req)
 	dump.P(err)
 	dump.P(resp)
+}
+
+type mid1 struct {
+}
+
+func (m mid1) Handle(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	dump.P("MID1++")
+	w, err := next(r)
+	dump.P("MID1--")
+	return w, err
 }
 
 func TestHReq_Use_Middleware(t *testing.T) {
@@ -96,10 +96,10 @@ func TestHReq_Use_Middleware(t *testing.T) {
 }
 
 func TestHReq_Use_MiddleFunc(t *testing.T) {
-	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.NextFunc) (*http.Response, error) {
-		dump.P("MID0+")
+	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+		dump.P("MID0++")
 		w, err := next(r)
-		dump.P("MID0-")
+		dump.P("MID0--")
 		return w, err
 	})
 

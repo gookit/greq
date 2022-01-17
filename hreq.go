@@ -13,6 +13,9 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
+// HandleFunc implements the Middleware interface
+type HandleFunc func(r *http.Request) (*Response, error)
+
 // RequestCreator interface
 type RequestCreator interface {
 	NewRequest(method, target string, body io.Reader) *http.Request
@@ -23,9 +26,9 @@ type RequestCreatorFunc func(method, target string, body io.Reader) *http.Reques
 
 // HReq is an HTTP Request builder and sender.
 type HReq struct {
-	client httpreq.HttpDoer
+	client httpreq.Doer
 	// core handler.
-	// handler Middleware
+	handler HandleFunc
 	middles []Middleware
 	// http method eg: GET,POST
 	method  string
@@ -80,7 +83,7 @@ func (h *HReq) New() *HReq {
 
 // Doer custom set http request doer.
 // If a nil client is given, the http.DefaultClient will be used.
-func (h *HReq) Doer(doer httpreq.HttpDoer) *HReq {
+func (h *HReq) Doer(doer httpreq.Doer) *HReq {
 	if doer != nil {
 		h.client = doer
 	} else {
@@ -91,7 +94,7 @@ func (h *HReq) Doer(doer httpreq.HttpDoer) *HReq {
 }
 
 // Client custom set http request doer
-func (h *HReq) Client(doer httpreq.HttpDoer) *HReq {
+func (h *HReq) Client(doer httpreq.Doer) *HReq {
 	return h.Doer(doer)
 }
 
@@ -101,7 +104,7 @@ func (h *HReq) HttpClient(hClient *http.Client) *HReq {
 }
 
 // Config custom config http request doer
-func (h *HReq) Config(fn func(doer httpreq.HttpDoer)) *HReq {
+func (h *HReq) Config(fn func(doer httpreq.Doer)) *HReq {
 	fn(h.client)
 	return h
 }
@@ -152,18 +155,19 @@ func (h *HReq) Method(method string) *HReq {
 }
 
 // Head sets the method to HEAD and request the pathURL, then send request and return response.
-func (h *HReq) Head(pathURL string) (*http.Response, error) {
+func (h *HReq) Head(pathURL string) (*Response, error) {
 	return h.Method(http.MethodHead).Send(pathURL)
 }
 
 // Get sets the method to GET and sets the given pathURL, then send request and return response.
-func (h *HReq) Get(pathURL string) (*http.Response, error) {
+func (h *HReq) Get(pathURL string) (*Response, error) {
 	return h.Method(http.MethodGet).Send(pathURL)
 }
 
-// Post sets the method to POST and sets the given pathURL, then send request and return response.
-func (h *HReq) Post(pathURL string) (*http.Response, error) {
-	return h.Method(http.MethodGet).Send(pathURL)
+// Post sets the method to POST and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Post(pathURL string) (*Response, error) {
+	return h.Method(http.MethodPost).Send(pathURL)
 }
 
 // ----------- URL, query params ------------
@@ -297,12 +301,12 @@ func (h *HReq) StringBody(s string) *HReq {
 // ----------- Do send request ------------
 
 // Send request and return response
-func (h *HReq) Send(pathURL string) (*http.Response, error) {
+func (h *HReq) Send(pathURL string) (*Response, error) {
 	return h.SendWithCtx(context.Background(), pathURL)
 }
 
 // MustSend send request and return response, will panic on error
-func (h *HReq) MustSend(pathURL string) *http.Response {
+func (h *HReq) MustSend(pathURL string) *Response {
 	resp, err := h.SendWithCtx(context.Background(), pathURL)
 	if err != nil {
 		panic(err)
@@ -312,7 +316,7 @@ func (h *HReq) MustSend(pathURL string) *http.Response {
 }
 
 // SendWithCtx request with context, then return response
-func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*http.Response, error) {
+func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*Response, error) {
 	fullURL := pathURL
 	if len(h.baseURL) > 0 {
 		// pathURL is a not full URL
@@ -354,29 +358,10 @@ func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*http.Response,
 		h.beforeSend(req)
 	}
 
-	// do := h.buildRequestDoFunc()
-	do := h.client.Do
-	for _, m := range h.middles {
-		do = func(r *http.Request) (*http.Response, error) {
-			return m.Handle(r)
-		}
-	}
+	// wrap middlewares
+	h.wrapMiddlewares()
 
-	// return h.client.Do(req)
-	return do(req)
-}
-
-func (h *HReq) buildRequestDoFunc() NextFunc {
-	if len(h.middles) == 0 {
-		return h.client.Do
-	}
-
-	fn := h.client.Do
-	for _, m := range h.middles {
-		fn = m.Handle(r, fn)
-	}
-
-	return fn
+	return h.handler(req)
 }
 
 func addQueryStructs(reqURL *url.URL, qss []interface{}) error {
