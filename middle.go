@@ -22,7 +22,11 @@ func (h *HReq) wrapMiddlewares() {
 			return nil, err
 		}
 
-		return &Response{Response: rawResp}, nil
+		return &Response{
+			Response: rawResp,
+			// with decoder
+			decoder: h.respDecoder,
+		}, nil
 	}
 
 	for _, m := range h.middles {

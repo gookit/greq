@@ -8,7 +8,6 @@ import (
 
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
-	"github.com/gookit/goutil/jsonutil"
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/hreq"
 	"github.com/stretchr/testify/assert"
@@ -68,7 +67,7 @@ func TestHReq_Send(t *testing.T) {
 	assert.True(t, httpreq.IsOK(sc))
 
 	retMp := make(map[string]interface{})
-	err = jsonutil.DecodeReader(resp.Body, &retMp)
+	err = resp.Decode(&retMp)
 	assert.NoError(t, err)
 	dump.P(retMp)
 
@@ -90,7 +89,7 @@ func TestHReq_Get(t *testing.T) {
 	assert.True(t, httpreq.IsSuccessful(sc))
 
 	retMp := make(map[string]interface{})
-	err = jsonutil.DecodeReader(resp.Body, &retMp)
+	err = resp.Decode(&retMp)
 	assert.NoError(t, err)
 	dump.P(retMp)
 }
@@ -106,7 +105,7 @@ func TestHReq_Post(t *testing.T) {
 	assert.True(t, httpreq.IsSuccessful(sc))
 
 	retMp := make(map[string]interface{})
-	err = jsonutil.DecodeReader(resp.Body, &retMp)
+	err = resp.Decode(&retMp)
 	assert.NoError(t, err)
 	dump.P(retMp)
 }
