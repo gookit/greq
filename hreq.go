@@ -170,6 +170,42 @@ func (h *HReq) Post(pathURL string) (*Response, error) {
 	return h.Method(http.MethodPost).Send(pathURL)
 }
 
+// Put sets the method to PUT and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Put(pathURL string) (*Response, error) {
+	return h.Method(http.MethodPut).Send(pathURL)
+}
+
+// Patch sets the method to PATCH and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Patch(pathURL string) (*Response, error) {
+	return h.Method(http.MethodPatch).Send(pathURL)
+}
+
+// Delete sets the method to DELETE and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Delete(pathURL string) (*Response, error) {
+	return h.Method(http.MethodDelete).Send(pathURL)
+}
+
+// Trace sets the method to TRACE and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Trace(pathURL string) (*Response, error) {
+	return h.Method(http.MethodTrace).Send(pathURL)
+}
+
+// Options sets the method to OPTIONS and request the pathURL,
+// then send request and return response.
+func (h *HReq) Options(pathURL string) (*Response, error) {
+	return h.Method(http.MethodOptions).Send(pathURL)
+}
+
+// Connect sets the method to CONNECT and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) Connect(pathURL string) (*Response, error) {
+	return h.Method(http.MethodConnect).Send(pathURL)
+}
+
 // ----------- URL, query params ------------
 
 // BaseURL set base URL for request

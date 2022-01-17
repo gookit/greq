@@ -1,5 +1,20 @@
 # HReq
 
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/hreq?style=flat-square)
+[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/hreq)](https://github.com/gookit/goutil)
+[![GoDoc](https://godoc.org/github.com/gookit/hreq?status.svg)](https://pkg.go.dev/github.com/gookit/hreq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gookit/hreq)](https://goreportcard.com/report/github.com/gookit/hreq)
+[![Unit-Tests](https://github.com/gookit/hreq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/hreq/actions)
+[![Coverage Status](https://coveralls.io/repos/github/gookit/hreq/badge.svg?branch=main)](https://coveralls.io/github/gookit/hreq?branch=main)
+
+**HReq** A simple http client request builder and sender
+
+## Install
+
+```bash
+go get github.com/gookit/hreq
+```
+
 ## Usage
 
 ```go
@@ -45,8 +60,12 @@ map[string]interface {} { #len=4
 },
 ```
 
+
+
 ## Refers
 
 - https://github.com/dghubble/sling
 - https://github.com/zhshch2002/goreq
+- https://github.com/go-resty/resty
+- https://github.com/monaco-io/request
 
