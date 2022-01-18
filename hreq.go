@@ -214,14 +214,20 @@ func (h *HReq) BaseURL(baseURL string) *HReq {
 	return h
 }
 
-// QueryValues appends url.Values to the query string. The value will be encoded as
-// url query parameters on new requests (see Request()).
-func (h *HReq) QueryValues(values url.Values) *HReq {
-	if values != nil {
-		h.queryStructs = append(h.queryStructs, values)
+// QueryParams appends url.Values/map[string]string to the query string.
+// The value will be encoded as url query parameters on send requests (see Send()).
+func (h *HReq) QueryParams(ps interface{}) *HReq {
+	if ps != nil {
+		h.queryStructs = append(h.queryStructs, ps)
 	}
 
 	return h
+}
+
+// QueryValues appends url.Values to the query string.
+// The value will be encoded as url query parameters on new requests (see Send()).
+func (h *HReq) QueryValues(values url.Values) *HReq {
+	return h.QueryParams(values)
 }
 
 // ----------- Header ------------
@@ -297,7 +303,28 @@ func (h *HReq) BasicAuth(username, password string) *HReq {
 // ----------- Body ------------
 
 // Body with custom body
-func (h *HReq) Body(r io.Reader) *HReq {
+func (h *HReq) Body(bd interface{}) *HReq {
+	switch typVal := bd.(type) {
+	case io.Reader:
+		h.BodyReader(typVal)
+		break
+	case BodyProvider:
+		h.BodyProvider(typVal)
+		break
+	case string:
+		h.StringBody(typVal)
+		break
+	case []byte:
+		h.BytesBody(typVal)
+		break
+	default:
+		panic("invalid data type as body")
+	}
+	return h
+}
+
+// BodyReader with custom io reader body
+func (h *HReq) BodyReader(r io.Reader) *HReq {
 	h.bodyProvider = bodyProvider{body: r}
 	return h
 }
@@ -326,12 +353,12 @@ func (h *HReq) FormBody(formData interface{}) *HReq {
 
 // BytesBody with custom string body
 func (h *HReq) BytesBody(bs []byte) *HReq {
-	return h.Body(bytes.NewReader(bs))
+	return h.BodyReader(bytes.NewReader(bs))
 }
 
 // StringBody with custom string body
 func (h *HReq) StringBody(s string) *HReq {
-	return h.Body(strings.NewReader(s))
+	return h.BodyReader(strings.NewReader(s))
 }
 
 // ----------- Do send request ------------

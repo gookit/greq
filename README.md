@@ -22,7 +22,6 @@ package main
 
 import (
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/goutil/jsonutil"
 	"github.com/gookit/hreq"
 )
 
@@ -37,7 +36,11 @@ func main() {
 	}
 
 	retMp := make(map[string]interface{})
-	_ = jsonutil.DecodeReader(resp.Body, &retMp)
+	err = resp.Decode(&retMp)
+	if err != nil {
+		panic(err)
+	}
+
 	dump.P(retMp)
 }
 ```
@@ -60,7 +63,56 @@ map[string]interface {} { #len=4
 },
 ```
 
+### Response to string
 
+`hreq.Response.String()` can convert response to string.
+
+```go
+package main
+
+import (
+	"fmt"
+	
+	"github.com/gookit/goutil/dump"
+	"github.com/gookit/hreq"
+)
+
+func main() {
+	resp, err := hreq.New("https://httpbin.org").
+		UserAgent("custom-client/1.0").
+		Send("/get")
+	
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Print(resp.String())
+}
+```
+
+**Output**:
+
+```text
+HTTP/2.0 200 OK
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+Date: Tue, 18 Jan 2022 04:52:39 GMT
+Content-Type: application/json
+Content-Length: 272
+Server: gunicorn/19.9.0
+
+{
+  "args": {}, 
+  "headers": {
+    "Accept-Encoding": "gzip", 
+    "Host": "httpbin.org", 
+    "User-Agent": "custom-client/1.0", 
+    "X-Amzn-Trace-Id": "Root=1-61e64797-3e428a925f7709906a8b7c01"
+  }, 
+  "origin": "222.210.59.218", 
+  "url": "https://httpbin.org/get"
+}
+```
 
 ## Refers
 
