@@ -288,9 +288,19 @@ func (h *HReq) JSONType() *HReq {
 	return h.SetHeader(httpctype.Key, httpctype.JSON)
 }
 
+// FormType with from Content-Type header
+func (h *HReq) FormType() *HReq {
+	return h.SetHeader(httpctype.Key, httpctype.Form)
+}
+
 // UserAgent with User-Agent header setting.
 func (h *HReq) UserAgent(value string) *HReq {
 	return h.SetHeader("User-Agent", value)
+}
+
+// UserAuth with user auth header value.
+func (h *HReq) UserAuth(value string) *HReq {
+	return h.SetHeader("Authorization", value)
 }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
@@ -300,7 +310,17 @@ func (h *HReq) BasicAuth(username, password string) *HReq {
 	return h.SetHeader("Authorization", httpreq.BuildBasicAuth(username, password))
 }
 
-// ----------- Body ------------
+// SetCookieString set cookie header value.
+//
+// Usage:
+//	h.New().
+//		SetCookieString("name=inhere;age=30").
+//		Get("/some/api")
+func (h *HReq) SetCookieString(value string) *HReq {
+	return h.AddHeader("Set-Cookie", value)
+}
+
+// ----------- Request Body ------------
 
 // Body with custom body
 func (h *HReq) Body(bd interface{}) *HReq {
@@ -365,12 +385,12 @@ func (h *HReq) StringBody(s string) *HReq {
 
 // Send request and return response
 func (h *HReq) Send(pathURL string) (*Response, error) {
-	return h.SendWithCtx(context.Background(), pathURL)
+	return h.SendWithCtx(pathURL, context.Background())
 }
 
 // MustSend send request and return response, will panic on error
 func (h *HReq) MustSend(pathURL string) *Response {
-	resp, err := h.SendWithCtx(context.Background(), pathURL)
+	resp, err := h.SendWithCtx(pathURL, context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -379,7 +399,39 @@ func (h *HReq) MustSend(pathURL string) *Response {
 }
 
 // SendWithCtx request with context, then return response
-func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*Response, error) {
+func (h *HReq) SendWithCtx(pathURL string, ctx context.Context) (*Response, error) {
+	req, err := h.NewRequestWithCtx(pathURL, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// do send
+	return h.SendRequest(req)
+}
+
+// SendRequest send request
+func (h *HReq) SendRequest(req *http.Request) (*Response, error) {
+	// call before send.
+	if h.beforeSend != nil {
+		h.beforeSend(req)
+	}
+
+	// wrap middlewares
+	h.wrapMiddlewares()
+
+	// do send
+	return h.handler(req)
+}
+
+// ----------- Build request ------------
+
+// NewRequest build new request
+func (h *HReq) NewRequest(pathURL string) (*http.Request, error) {
+	return h.NewRequestWithCtx(pathURL, context.Background())
+}
+
+// NewRequestWithCtx build new request with context
+func (h *HReq) NewRequestWithCtx(pathURL string, ctx context.Context) (*http.Request, error) {
 	fullURL := pathURL
 	if len(h.baseURL) > 0 {
 		// pathURL is a not full URL
@@ -416,15 +468,7 @@ func (h *HReq) SendWithCtx(ctx context.Context, pathURL string) (*Response, erro
 	// copy headers
 	httpreq.AddHeadersToRequest(req, h.header)
 
-	// call before send.
-	if h.beforeSend != nil {
-		h.beforeSend(req)
-	}
-
-	// wrap middlewares
-	h.wrapMiddlewares()
-
-	return h.handler(req)
+	return req, err
 }
 
 func addQueryStructs(reqURL *url.URL, qss []interface{}) error {

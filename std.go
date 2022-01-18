@@ -15,11 +15,6 @@ func BaseURL(baseURL string) *HReq {
 	return std.BaseURL(baseURL)
 }
 
-// Head sets the method to HEAD and request the pathURL, then send request and return response.
-func Head(pathURL string) (*Response, error) {
-	return std.Method(http.MethodHead).Send(pathURL)
-}
-
 // Get sets the method to GET and sets the given pathURL, then send request and return response.
 func Get(pathURL string) (*Response, error) {
 	return std.Method(http.MethodGet).Send(pathURL)
@@ -47,6 +42,11 @@ func Patch(pathURL string) (*Response, error) {
 // then send request and return http response.
 func Delete(pathURL string) (*Response, error) {
 	return std.Method(http.MethodDelete).Send(pathURL)
+}
+
+// Head sets the method to HEAD and request the pathURL, then send request and return response.
+func Head(pathURL string) (*Response, error) {
+	return std.Method(http.MethodHead).Send(pathURL)
 }
 
 // Trace sets the method to TRACE and sets the given pathURL,

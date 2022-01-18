@@ -11,7 +11,12 @@
 
 > `hreq` inspired from https://github.com/dghubble/sling and more projects, please see refers.
 
-## Features
+## 功能说明
+
+- 链式配置请求，支持 `GET,POST,PUT,PATCH,DELETE,HEAD` 等通用请求方法
+- 自定义提供请求Body
+- 自定义响应Body解析
+- 支持定义添加任意的中间件
 
 ## Install
 
@@ -19,7 +24,7 @@
 go get github.com/gookit/hreq
 ```
 
-## Usage
+## Quick start
 
 ```go
 package main

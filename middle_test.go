@@ -2,7 +2,9 @@ package hreq_test
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/gookit/goutil/dump"
@@ -37,8 +39,7 @@ func TestHReq_Use_Middleware(t *testing.T) {
 		Get("/get")
 
 	assert.NoError(t, err)
-	sc := resp.StatusCode
-	assert.True(t, httpreq.IsOK(sc))
+	assert.True(t, resp.IsOK())
 
 	err = resp.Write(buf)
 	assert.NoError(t, err)
@@ -63,4 +64,42 @@ func TestHReq_Use_MiddleFunc(t *testing.T) {
 	sc := resp.StatusCode
 	assert.True(t, httpreq.IsOK(sc))
 
+}
+
+func TestHReq_Use_Multi_MiddleFunc(t *testing.T) {
+	buf := &bytes.Buffer{}
+	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+		buf.WriteString("MID0>>")
+		w, err := next(r)
+		buf.WriteString(">>MID0")
+		return w, err
+	})
+
+	mid1 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+		buf.WriteString("MID1>>")
+		w, err := next(r)
+		buf.WriteString(">>MID1")
+		return w, err
+	})
+
+	mid2 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+		buf.WriteString("MID2>>")
+		w, err := next(r)
+		buf.WriteString(">>MID2")
+		return w, err
+	})
+
+	resp, err := hreq.New(testBaseURL).
+		Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
+			tw := httptest.NewRecorder()
+			buf.WriteString("(CORE)")
+			return tw.Result(), nil
+		})).
+		Middleware(mid0, mid1, mid2).
+		Get("/get")
+
+	assert.NoError(t, err)
+	assert.True(t, resp.IsOK())
+
+	fmt.Println(buf.String())
 }

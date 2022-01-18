@@ -49,8 +49,7 @@ func TestHReq_Doer(t *testing.T) {
 		Get("/get")
 
 	assert.NoError(t, err)
-	sc := resp.StatusCode
-	assert.True(t, httpreq.IsOK(sc))
+	assert.True(t, resp.IsOK())
 
 	err = resp.Write(buf)
 	assert.NoError(t, err)
@@ -63,8 +62,8 @@ func TestHReq_Send(t *testing.T) {
 		Send("/get")
 
 	assert.NoError(t, err)
-	sc := resp.StatusCode
-	assert.True(t, httpreq.IsOK(sc))
+	assert.True(t, resp.IsOK())
+	assert.False(t, resp.IsFail())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
@@ -84,9 +83,8 @@ func TestHReq_Get(t *testing.T) {
 		Get("/get")
 
 	assert.NoError(t, err)
-	sc := resp.StatusCode
-	assert.True(t, httpreq.IsOK(sc))
-	assert.True(t, httpreq.IsSuccessful(sc))
+	assert.True(t, resp.IsOK())
+	assert.True(t, resp.IsSuccessful())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
@@ -100,9 +98,8 @@ func TestHReq_Post(t *testing.T) {
 		Post("/post")
 
 	assert.NoError(t, err)
-	sc := resp.StatusCode
-	assert.True(t, httpreq.IsOK(sc))
-	assert.True(t, httpreq.IsSuccessful(sc))
+	assert.True(t, resp.IsOK())
+	assert.True(t, resp.IsSuccessful())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)

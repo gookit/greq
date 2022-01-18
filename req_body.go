@@ -56,7 +56,6 @@ func (p jsonBodyProvider) Body() (io.Reader, error) {
 }
 
 // formBodyProvider encodes a url tagged struct value as Body for requests.
-// See https://godoc.org/github.com/google/go-querystring/query for details.
 type formBodyProvider struct {
 	// allow type: string, url.Values
 	payload interface{}

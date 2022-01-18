@@ -19,6 +19,11 @@ func (r *Response) IsOK() bool {
 	return httpreq.IsOK(r.StatusCode)
 }
 
+// IsSuccessful check response status code is in 200 - 300
+func (r *Response) IsSuccessful() bool {
+	return httpreq.IsSuccessful(r.StatusCode)
+}
+
 // IsFail check response status code != 200
 func (r *Response) IsFail() bool {
 	return !httpreq.IsOK(r.StatusCode)
