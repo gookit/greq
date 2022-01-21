@@ -1,6 +1,7 @@
 package hreq_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/gookit/goutil/dump"
@@ -36,6 +37,7 @@ func TestGet_with_QueryParams(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
+	assert.True(t, resp.IsJSONType())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
@@ -57,7 +59,7 @@ func TestPost(t *testing.T) {
 }
 
 func TestPut(t *testing.T) {
-	resp, err := hreq.Post("/put")
+	resp, err := hreq.Put("/put")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -96,53 +98,41 @@ func TestDelete(t *testing.T) {
 }
 
 func TestHead(t *testing.T) {
-	resp, err := hreq.Head("/head")
+	resp, err := hreq.Head("/")
+	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
+	assert.False(t, resp.IsEmptyBody())
 
-	retMp := make(map[string]interface{})
-	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
-	dump.P(retMp)
-}
-
-func TestTrace(t *testing.T) {
-	resp, err := hreq.Trace("/trace")
-
-	assert.NoError(t, err)
-	assert.True(t, resp.IsOK())
-	assert.True(t, resp.IsSuccessful())
-
-	retMp := make(map[string]interface{})
-	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
-	dump.P(retMp)
+	assert.Empty(t, resp.BodyString())
 }
 
 func TestOptions(t *testing.T) {
-	resp, err := hreq.Options("/options")
+	resp, err := hreq.Options("/")
+	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
+	assert.True(t, resp.IsEmptyBody())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
-	err = resp.Decode(&retMp)
+	assert.Empty(t, resp.BodyString())
+	assert.NotEmpty(t, resp.HeaderString())
+}
+
+func TestTrace(t *testing.T) {
+	resp, err := hreq.Trace("/")
+	fmt.Println(resp.String())
+
 	assert.NoError(t, err)
-	dump.P(retMp)
+	// assert.True(t, resp.IsNoBody())
 }
 
 func TestConnect(t *testing.T) {
-	resp, err := hreq.Connect("/connect")
+	resp, err := hreq.Connect("/")
+	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
-	assert.True(t, resp.IsOK())
-	assert.True(t, resp.IsSuccessful())
-
-	retMp := make(map[string]interface{})
-	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
-	dump.P(retMp)
 }

@@ -11,7 +11,7 @@ import (
 func TestResponse_String(t *testing.T) {
 	resp, err := hreq.New(testBaseURL).
 		UserAgent("custom-client/1.0").
-		Send("/get")
+		Get("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
