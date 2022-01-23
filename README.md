@@ -13,13 +13,21 @@
 
 ## Features
 
+- Make http requests, supports `GET,POST,PUT,PATCH,DELETE,HEAD`
+- Transform request and response data
+- Supports chain configuration request
+- Supports defining and adding middleware
+- Supports defining request body provider and response decoder
+- Built-In: fom, json request body provider
+- Built-In: xml, json response body decoder
+
 ## Install
 
 ```bash
 go get github.com/gookit/hreq
 ```
 
-## Usage
+## Quick start
 
 ```go
 package main
@@ -33,19 +41,19 @@ func main() {
 	resp, err := hreq.New("https://httpbin.org").
 		JSONType().
 		UserAgent("custom-client/1.0").
-		Get("/get")
+		Post("/post")
 
 	if err != nil {
 		panic(err)
 	}
 
-	retMp := make(map[string]interface{})
-	err = resp.Decode(&retMp)
+	ret := make(map[string]interface{})
+	err = resp.Decode(&ret)
 	if err != nil {
 		panic(err)
 	}
 
-	dump.P(retMp)
+	dump.P(ret)
 }
 ```
 
@@ -63,7 +71,7 @@ map[string]interface {} { #len=4
     "Accept-Encoding": string("gzip"), #len=4
   },
   "origin": string("222.210.59.218"), #len=14
-  "url": string("https://httpbin.org/get"), #len=23
+  "url": string("https://httpbin.org/post"), #len=24
 },
 ```
 
@@ -111,6 +119,44 @@ MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 ```
 
 ## More usage
+
+### Check response
+
+- `Response.IsOK() bool`
+- `Response.IsFail() bool`
+- `Response.IsEmptyBody() bool`
+- `Response.IsJSONType() bool`
+- `Response.IsContentType(prefix string) bool`
+
+### Get response data
+
+- `Response.ContentType() string`
+- `Response.Decode(ptr interface{}) error`
+
+### Request to string
+
+```go
+    req, err := hreq.New("https://httpbin.org").
+		UserAgent("some-client/1.0").
+		BasicAuth("inhere", "some string").
+		JSONType().
+		Body("hi, with body").
+		Build("/post", "POST")
+
+	str := hreq.ToString(req, err)
+	fmt.Println(str)
+```
+
+**Output**:
+
+```text
+POST https://httpbin.org/post/ HTTP/1.1
+User-Agent: some-client/1.0
+Authorization: Basic aW5oZXJlOnNvbWUgc3RyaW5n
+Content-Type: application/json; charset=utf-8
+
+hi, with body
+```
 
 ### Response to string
 

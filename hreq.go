@@ -15,7 +15,7 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
-// HandleFunc implements the Middleware interface
+// HandleFunc for the Middleware
 type HandleFunc func(r *http.Request) (*Response, error)
 
 // RequestCreator interface
@@ -378,7 +378,7 @@ func (h *HReq) BodyProvider(bp BodyProvider) *HReq {
 
 // FileContentsBody read file contents as body
 func (h *HReq) FileContentsBody(filepath string) *HReq {
-	file, err := fsutil.OpenFile(filepath, os.O_RDONLY, fsutil.DefaultFilePerm)
+	file, err := os.OpenFile(filepath, os.O_RDONLY, fsutil.DefaultFilePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -462,6 +462,11 @@ func (h *HReq) SendRequest(req *http.Request) (*Response, error) {
 
 // ----------- Build request ------------
 
+// Build new request
+func (h *HReq) Build(pathURLAndMethod ...string) (*http.Request, error) {
+	return h.NewRequestWithCtx(context.Background(), pathURLAndMethod...)
+}
+
 // NewRequest build new request
 func (h *HReq) NewRequest(pathURLAndMethod ...string) (*http.Request, error) {
 	return h.NewRequestWithCtx(context.Background(), pathURLAndMethod...)
@@ -515,6 +520,11 @@ func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string
 	return req, err
 }
 
+// String request to string.
+func (h *HReq) String() string {
+	return ToString(h.Build())
+}
+
 func appendQueryParams(reqURL *url.URL, uv url.Values) error {
 	urlValues, err := url.ParseQuery(reqURL.RawQuery)
 	if err != nil {
@@ -531,4 +541,33 @@ func appendQueryParams(reqURL *url.URL, uv url.Values) error {
 	// e.g. "key=val&foo=bar"
 	reqURL.RawQuery = urlValues.Encode()
 	return nil
+}
+
+// ToString convert http Request to string
+func ToString(r *http.Request, err error) string {
+	if err != nil {
+		return ""
+	}
+
+	buf := &bytes.Buffer{}
+	buf.WriteString(r.Method)
+	buf.WriteByte(' ')
+	buf.WriteString(r.URL.String())
+	buf.WriteByte(' ')
+	buf.WriteString(r.Proto)
+	buf.WriteByte('\n')
+
+	for key, values := range r.Header {
+		buf.WriteString(key)
+		buf.WriteString(": ")
+		buf.WriteString(strings.Join(values, ";"))
+		buf.WriteByte('\n')
+	}
+
+	if r.Body != nil {
+		buf.WriteByte('\n')
+		_, _ = buf.ReadFrom(r.Body)
+	}
+
+	return buf.String()
 }

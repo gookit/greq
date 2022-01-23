@@ -2,6 +2,7 @@ package hreq_test
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -105,4 +106,16 @@ func TestHReq_Post(t *testing.T) {
 	err = resp.Decode(&retMp)
 	assert.NoError(t, err)
 	dump.P(retMp)
+}
+
+func TestHReq_String(t *testing.T) {
+	str := hreq.New(testBaseURL+"/post").
+		UserAgent("some-client/1.0").
+		BasicAuth("inhere", "some string").
+		JSONType().
+		Body("hi, with body").
+		Method("POST").
+		String()
+
+	fmt.Println(str)
 }

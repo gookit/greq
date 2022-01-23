@@ -35,25 +35,30 @@ func (r *Response) IsEmptyBody() bool {
 	return r.ContentLength <= 0
 }
 
-// Decode get the raw http.Response
-func (r *Response) Decode(ptr interface{}) error {
-	return r.decoder.Decode(r.Response, ptr)
-}
-
 // ContentType get response content type
 func (r *Response) ContentType() string {
 	return r.Header.Get(httpctype.Key)
 }
 
 // IsContentType check response content type is equals the given.
-func (r *Response) IsContentType(val string) bool {
-	return r.Header.Get(httpctype.Key) == val
+//
+// Usage:
+//	resp, err := hreq.Post("some.host/path")
+//  ok := resp.IsContentType("application/xml")
+//
+func (r *Response) IsContentType(prefix string) bool {
+	val := r.Header.Get(httpctype.Key)
+	return val != "" && strings.HasPrefix(val, prefix)
 }
 
 // IsJSONType check response content type is JSON
 func (r *Response) IsJSONType() bool {
-	val := r.Header.Get(httpctype.Key)
-	return val != "" && strings.HasPrefix(val, httpctype.MIMEJSON)
+	return r.IsContentType(httpctype.MIMEJSON)
+}
+
+// Decode get the raw http.Response
+func (r *Response) Decode(ptr interface{}) error {
+	return r.decoder.Decode(r.Response, ptr)
 }
 
 // HeaderString convert response headers to string

@@ -98,7 +98,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestHead(t *testing.T) {
-	resp, err := hreq.Head("/")
+	resp, err := hreq.Reset().Head("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
