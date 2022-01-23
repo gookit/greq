@@ -13,6 +13,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpreq"
+	"github.com/gookit/goutil/strutil"
 )
 
 // HandleFunc for the Middleware
@@ -36,6 +37,8 @@ type HReq struct {
 	method  string
 	header  http.Header
 	baseURL string
+	// pathURL only valid in one request
+	pathURL string
 	// query params data. allow: map[string]string, url.Values
 	queryParams url.Values
 	// body provider
@@ -157,48 +160,92 @@ func (h *HReq) Method(method string) *HReq {
 }
 
 // Head sets the method to HEAD and request the pathURL, then send request and return response.
-func (h *HReq) Head(pathURL string) (*Response, error) {
+func (h *HReq) Head(pathURL string) *HReq {
+	return h.Method(http.MethodHead).PathURL(pathURL)
+}
+
+// HeadDo sets the method to HEAD and request the pathURL,
+// then send request and return response.
+func (h *HReq) HeadDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodHead)
 }
 
-// Get sets the method to GET and sets the given pathURL, then send request and return response.
-func (h *HReq) Get(pathURL string) (*Response, error) {
+// Get sets the method to GET and sets the given pathURL
+func (h *HReq) Get(pathURL string) *HReq {
+	return h.Method(http.MethodGet).PathURL(pathURL)
+}
+
+// GetDo sets the method to GET and sets the given pathURL,
+// then send request and return response.
+func (h *HReq) GetDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodGet)
 }
 
-// Post sets the method to POST and sets the given pathURL,
+// Post sets the method to POST and sets the given pathURL
+func (h *HReq) Post(pathURL string) *HReq {
+	return h.Method(http.MethodPost).PathURL(pathURL)
+}
+
+// PostDo sets the method to POST and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Post(pathURL string) (*Response, error) {
+func (h *HReq) PostDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPost)
 }
 
-// Put sets the method to PUT and sets the given pathURL,
+// Put sets the method to PUT and sets the given pathURL
+func (h *HReq) Put(pathURL string) *HReq {
+	return h.Method(http.MethodPut).PathURL(pathURL)
+}
+
+// PutDo sets the method to PUT and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Put(pathURL string) (*Response, error) {
+func (h *HReq) PutDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPut)
 }
 
-// Patch sets the method to PATCH and sets the given pathURL,
+// Patch sets the method to PATCH and sets the given pathURL
+func (h *HReq) Patch(pathURL string) *HReq {
+	return h.Method(http.MethodPatch).PathURL(pathURL)
+}
+
+// PatchDo sets the method to PATCH and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Patch(pathURL string) (*Response, error) {
+func (h *HReq) PatchDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPatch)
 }
 
-// Delete sets the method to DELETE and sets the given pathURL,
+// Delete sets the method to DELETE and sets the given pathURL
+func (h *HReq) Delete(pathURL string) *HReq {
+	return h.Method(http.MethodDelete).PathURL(pathURL)
+}
+
+// DeleteDo sets the method to DELETE and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Delete(pathURL string) (*Response, error) {
+func (h *HReq) DeleteDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodDelete)
 }
 
 // Trace sets the method to TRACE and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Trace(pathURL string) (*Response, error) {
+func (h *HReq) Trace(pathURL string) *HReq {
+	return h.Method(http.MethodTrace).PathURL(pathURL)
+}
+
+// TraceDo sets the method to TRACE and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) TraceDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodTrace)
 }
 
 // Options sets the method to OPTIONS and request the pathURL,
 // then send request and return response.
-func (h *HReq) Options(pathURL string) (*Response, error) {
+func (h *HReq) Options(pathURL string) *HReq {
+	return h.Method(http.MethodOptions).PathURL(pathURL)
+}
+
+// OptionsDo sets the method to OPTIONS and request the pathURL,
+// then send request and return response.
+func (h *HReq) OptionsDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodOptions)
 }
 
@@ -208,18 +255,29 @@ func (h *HReq) Connect(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodConnect)
 }
 
+// ConnectDo sets the method to CONNECT and sets the given pathURL,
+// then send request and return http response.
+func (h *HReq) ConnectDo(pathURL string) (*Response, error) {
+	return h.Send(pathURL, http.MethodConnect)
+}
+
 // ----------- URL, query params ------------
 
-// BaseURL set base URL for request
+// BaseURL set base URL for all request
 func (h *HReq) BaseURL(baseURL string) *HReq {
 	h.baseURL = baseURL
 	return h
 }
 
-// QueryParam appends new k-v param to the query string.
-func (h *HReq) QueryParam(key, value string) *HReq {
-	h.queryParams.Add(key, value)
+// PathURL set path URL for current request
+func (h *HReq) PathURL(pathURL string) *HReq {
+	h.pathURL = pathURL
+	return h
+}
 
+// QueryParam appends new k-v param to the query string.
+func (h *HReq) QueryParam(key string, value interface{}) *HReq {
+	h.queryParams.Add(key, strutil.MustString(value))
 	return h
 }
 
@@ -420,6 +478,11 @@ func (h *HReq) Multipart(key, value string) *HReq {
 
 // ----------- Do send request ------------
 
+// Do send request and return response
+func (h *HReq) Do(pathURLAndMethod ...string) (*Response, error) {
+	return h.SendWithCtx(context.Background(), pathURLAndMethod...)
+}
+
 // Send request and return response
 func (h *HReq) Send(pathURLAndMethod ...string) (*Response, error) {
 	return h.SendWithCtx(context.Background(), pathURLAndMethod...)
@@ -433,6 +496,11 @@ func (h *HReq) MustSend(pathURLAndMethod ...string) *Response {
 	}
 
 	return resp
+}
+
+// DoWithCtx request with context, then return response
+func (h *HReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
+	return h.SendWithCtx(ctx, pathURLAndMethod...)
 }
 
 // SendWithCtx request with context, then return response
@@ -474,7 +542,7 @@ func (h *HReq) NewRequest(pathURLAndMethod ...string) (*http.Request, error) {
 
 // NewRequestWithCtx build new request with context
 func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string) (*http.Request, error) {
-	pathURL := "/"
+	pathURL := h.pathURL
 	if ln := len(pathURLAndMethod); ln > 0 {
 		pathURL = pathURLAndMethod[0]
 		if ln > 1 {
@@ -507,6 +575,10 @@ func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string
 		if err != nil {
 			return nil, err
 		}
+
+		if cType := h.bodyProvider.ContentType(); cType != "" {
+			h.ContentType(cType)
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, h.method, reqURL.String(), body)
@@ -517,6 +589,8 @@ func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string
 	// copy headers
 	httpreq.AddHeadersToRequest(req, h.header)
 
+	// reset after request build.
+	h.pathURL = ""
 	return req, err
 }
 

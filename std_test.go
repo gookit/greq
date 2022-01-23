@@ -26,13 +26,13 @@ func TestGet(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestGet_with_QueryParams(t *testing.T) {
+func TestGetDo_with_QueryParams(t *testing.T) {
 	resp, err := hreq.Std().
 		JSONType().
 		QueryParams(map[string]string{
 			"name": "inhere",
 		}).
-		Get("/get")
+		GetDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -98,7 +98,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestHead(t *testing.T) {
-	resp, err := hreq.Reset().Head("/")
+	resp, err := hreq.Reset().HeadDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)

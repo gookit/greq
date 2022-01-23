@@ -47,7 +47,7 @@ func TestHReq_Doer(t *testing.T) {
 		Doer(testDoer).
 		Use(mid0).
 		UserAgent("custom-client/1.0").
-		Get("/get")
+		Do("/get", "GET")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -78,10 +78,10 @@ func TestHReq_Send(t *testing.T) {
 	assert.Equal(t, "custom-client/1.0", headers["User-Agent"])
 }
 
-func TestHReq_Get(t *testing.T) {
+func TestHReq_GetDo(t *testing.T) {
 	resp, err := hreq.New(testBaseURL).
 		JSONType().
-		Get("/get")
+		GetDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -93,10 +93,10 @@ func TestHReq_Get(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestHReq_Post(t *testing.T) {
+func TestHReq_PostDo(t *testing.T) {
 	resp, err := hreq.New(testBaseURL).
 		JSONType().
-		Post("/post")
+		PostDo("/post")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -109,12 +109,12 @@ func TestHReq_Post(t *testing.T) {
 }
 
 func TestHReq_String(t *testing.T) {
-	str := hreq.New(testBaseURL+"/post").
+	str := hreq.New(testBaseURL).
 		UserAgent("some-client/1.0").
 		BasicAuth("inhere", "some string").
 		JSONType().
 		Body("hi, with body").
-		Method("POST").
+		Post("/post").
 		String()
 
 	fmt.Println(str)

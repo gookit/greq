@@ -36,7 +36,7 @@ func TestHReq_Use_Middleware(t *testing.T) {
 	resp, err := hreq.New(testBaseURL).
 		Doer(testDoer).
 		Uses(&mid1{}, hreq.MiddleFunc(mid2)).
-		Get("/get")
+		GetDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -58,7 +58,7 @@ func TestHReq_Use_MiddleFunc(t *testing.T) {
 	resp, err := hreq.New(testBaseURL).
 		Doer(testDoer).
 		Middleware(mid0).
-		Get("/get")
+		PutDo("/get")
 
 	assert.NoError(t, err)
 	sc := resp.StatusCode
@@ -96,7 +96,7 @@ func TestHReq_Use_Multi_MiddleFunc(t *testing.T) {
 			return tw.Result(), nil
 		})).
 		Middleware(mid0, mid1, mid2).
-		Get("/get")
+		PatchDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())

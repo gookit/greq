@@ -12,6 +12,7 @@ import (
 // Response is a http.Response wrapper
 type Response struct {
 	*http.Response
+	// decoder for response, default will extends from HReq.respDecoder
 	decoder RespDecoder
 }
 
@@ -59,6 +60,11 @@ func (r *Response) IsJSONType() bool {
 // Decode get the raw http.Response
 func (r *Response) Decode(ptr interface{}) error {
 	return r.decoder.Decode(r.Response, ptr)
+}
+
+// SetDecoder for response
+func (r *Response) SetDecoder(decoder RespDecoder) {
+	r.decoder = decoder
 }
 
 // HeaderString convert response headers to string

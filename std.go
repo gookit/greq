@@ -88,8 +88,7 @@ func Head(pathURL string) (*Response, error) {
 // Trace sets the method to TRACE and sets the given pathURL,
 // then send request and return http response.
 func Trace(pathURL string) (*Response, error) {
-	reset()
-	return std.Send(pathURL, http.MethodTrace)
+	return reset().Send(pathURL, http.MethodTrace)
 }
 
 // Options sets the method to OPTIONS and request the pathURL,

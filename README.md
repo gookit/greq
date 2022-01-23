@@ -41,7 +41,7 @@ func main() {
 	resp, err := hreq.New("https://httpbin.org").
 		JSONType().
 		UserAgent("custom-client/1.0").
-		Post("/post")
+		PostDo("/post")
 
 	if err != nil {
 		panic(err)
@@ -107,7 +107,7 @@ map[string]interface {} { #len=4
 			return tw.Result(), nil
 		})).
 		Middleware(mid0, mid1, mid2).
-		Get("/get")
+		GetDo("/get")
 
     fmt.Println(buf.String())
 ```
@@ -136,14 +136,14 @@ MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 ### Request to string
 
 ```go
-    req, err := hreq.New("https://httpbin.org").
+    str := hreq.New("https://httpbin.org").
 		UserAgent("some-client/1.0").
 		BasicAuth("inhere", "some string").
 		JSONType().
 		Body("hi, with body").
-		Build("/post", "POST")
+		Post("/post").
+		String()
 
-	str := hreq.ToString(req, err)
 	fmt.Println(str)
 ```
 
