@@ -9,7 +9,7 @@
 
 **HReq** A simple http client request builder and sender
 
-> `hreq` inspired from https://github.com/dghubble/sling and more projects, please see refers.
+> `hreq` inspired from [dghubble/sling][1] and more projects, please see refers.
 
 ## Features
 
@@ -74,6 +74,36 @@ map[string]interface {} { #len=4
   "url": string("https://httpbin.org/post"), #len=24
 },
 ```
+
+## Request headers
+
+```go
+hreq.New("some.host/api").
+	SetHeader("req-id", "a string")
+```
+
+Set multi at once:
+
+```go
+hreq.New("some.host/api").
+	SetHeaders(map[string]string{
+		"req-id": "a string",
+	})
+```
+
+### Set content type
+
+```go
+hreq.New("some.host/api").
+    ContentType("text/html")
+```
+
+Built in `JSONType()` `FromType()` `XMLType()`
+
+```go
+hreq.New("some.host/api").JSONType()
+```
+
 
 ## Use middleware
 
@@ -216,3 +246,4 @@ Server: gunicorn/19.9.0
 - https://github.com/go-resty/resty
 - https://github.com/monaco-io/request
 
+[1]: https://github.com/dghubble/sling

@@ -13,8 +13,8 @@ func init() {
 	hreq.BaseURL(testBaseURL)
 }
 
-func TestGet(t *testing.T) {
-	resp, err := hreq.Get("/get")
+func TestGetDo(t *testing.T) {
+	resp, err := hreq.GetDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -45,8 +45,8 @@ func TestGetDo_with_QueryParams(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestPost(t *testing.T) {
-	resp, err := hreq.Post("/post")
+func TestPostDo(t *testing.T) {
+	resp, err := hreq.PostDo("/post")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -58,8 +58,8 @@ func TestPost(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestPut(t *testing.T) {
-	resp, err := hreq.Put("/put")
+func TestPutDo(t *testing.T) {
+	resp, err := hreq.PutDo("/put")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -71,8 +71,8 @@ func TestPut(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestPatch(t *testing.T) {
-	resp, err := hreq.Patch("/patch")
+func TestPatchDo(t *testing.T) {
+	resp, err := hreq.PatchDo("/patch")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -84,8 +84,8 @@ func TestPatch(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestDelete(t *testing.T) {
-	resp, err := hreq.Delete("/delete")
+func TestDeleteDo(t *testing.T) {
+	resp, err := hreq.DeleteDo("/delete")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -97,7 +97,7 @@ func TestDelete(t *testing.T) {
 	dump.P(retMp)
 }
 
-func TestHead(t *testing.T) {
+func TestHeadDo(t *testing.T) {
 	resp, err := hreq.Reset().HeadDo("/")
 	fmt.Println(resp.String())
 
@@ -109,8 +109,8 @@ func TestHead(t *testing.T) {
 	assert.Empty(t, resp.BodyString())
 }
 
-func TestOptions(t *testing.T) {
-	resp, err := hreq.Options("/")
+func TestOptionsDo(t *testing.T) {
+	resp, err := hreq.OptionsDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
@@ -122,16 +122,16 @@ func TestOptions(t *testing.T) {
 	assert.NotEmpty(t, resp.HeaderString())
 }
 
-func TestTrace(t *testing.T) {
-	resp, err := hreq.Trace("/")
+func TestTraceDo(t *testing.T) {
+	resp, err := hreq.TraceDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
 	// assert.True(t, resp.IsNoBody())
 }
 
-func TestConnect(t *testing.T) {
-	resp, err := hreq.Connect("/")
+func TestConnectDo(t *testing.T) {
+	resp, err := hreq.ConnectDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)

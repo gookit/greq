@@ -356,6 +356,11 @@ func (h *HReq) ContentType(value string) *HReq {
 	return h.SetHeader(httpctype.Key, value)
 }
 
+// XMLType with xml Content-Type header
+func (h *HReq) XMLType() *HReq {
+	return h.SetHeader(httpctype.Key, httpctype.XML)
+}
+
 // JSONType with json Content-Type header
 func (h *HReq) JSONType() *HReq {
 	return h.SetHeader(httpctype.Key, httpctype.JSON)
@@ -388,12 +393,25 @@ func (h *HReq) BasicAuth(username, password string) *HReq {
 	return h.SetHeader("Authorization", httpreq.BuildBasicAuth(username, password))
 }
 
+// SetCookies to request
+func (h *HReq) SetCookies(hcs ...*http.Cookie) *HReq {
+	var b strings.Builder
+	for i, hc := range hcs {
+		if i > 0 {
+			b.WriteByte(';')
+		}
+		b.WriteString(hc.String())
+	}
+
+	return h.SetCookieString(b.String())
+}
+
 // SetCookieString set cookie header value.
 //
 // Usage:
 //	h.New().
 //		SetCookieString("name=inhere;age=30").
-//		Get("/some/api")
+//		GetDo("/some/api")
 func (h *HReq) SetCookieString(value string) *HReq {
 	// return h.AddHeader("Set-Cookie", value)
 	return h.AddHeader("Cookie", value)
