@@ -3,7 +3,8 @@ module github.com/gookit/hreq
 go 1.14
 
 require (
-	github.com/gookit/goutil v0.4.4
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/gookit/goutil v0.4.6
 	github.com/stretchr/testify v1.7.1
 )
 
