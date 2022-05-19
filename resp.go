@@ -59,7 +59,7 @@ func (r *Response) IsJSONType() bool {
 
 // Decode get the raw http.Response
 func (r *Response) Decode(ptr interface{}) error {
-	defer r.CloseBodyNoErr()
+	defer r.QuietCloseBody()
 	return r.decoder.Decode(r.Response, ptr)
 }
 
@@ -79,7 +79,7 @@ func (r *Response) BodyBuffer() *bytes.Buffer {
 	}
 
 	// NOTICE: must close resp body.
-	defer r.CloseBodyNoErr()
+	defer r.QuietCloseBody()
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		panic(err)
@@ -139,7 +139,7 @@ func (r *Response) CloseBody() error {
 	return r.Body.Close()
 }
 
-// CloseBodyNoErr close resp body, ignore error
-func (r *Response) CloseBodyNoErr() {
+// QuietCloseBody close resp body, ignore error
+func (r *Response) QuietCloseBody() {
 	_ = r.Body.Close()
 }

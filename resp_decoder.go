@@ -22,11 +22,11 @@ func (d jsonDecoder) Decode(resp *http.Response, ptr interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(ptr)
 }
 
-// xmlDecoder decodes http response JSON into a XML-tagged struct value.
-type xmlDecoder struct {
+// XmlDecoder decodes http response body into a XML-tagged struct value.
+type XmlDecoder struct {
 }
 
-// Decode decodes the Response Body into the value pointed to by ptr.
-func (d xmlDecoder) Decode(resp *http.Response, ptr interface{}) error {
+// Decode decodes the Response body into the value pointed to by ptr.
+func (d XmlDecoder) Decode(resp *http.Response, ptr interface{}) error {
 	return xml.NewDecoder(resp.Body).Decode(ptr)
 }

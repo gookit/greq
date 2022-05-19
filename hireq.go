@@ -154,6 +154,12 @@ func (h *HiReq) Middlewares(middles ...Middleware) *HiReq {
 	return h
 }
 
+// WithRespDecoder for client
+func (h *HiReq) WithRespDecoder(respDecoder RespDecoder) *HiReq {
+	h.respDecoder = respDecoder
+	return h
+}
+
 // ------------ Method ------------
 
 // Method set http method name.
@@ -427,16 +433,12 @@ func (h *HiReq) Body(body interface{}) *HiReq {
 	switch typVal := body.(type) {
 	case io.Reader:
 		h.BodyReader(typVal)
-		break
 	case BodyProvider:
 		h.BodyProvider(typVal)
-		break
 	case string:
 		h.StringBody(typVal)
-		break
 	case []byte:
 		h.BytesBody(typVal)
-		break
 	default:
 		panic("invalid data type as body")
 	}
