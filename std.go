@@ -1,4 +1,4 @@
-package hreq
+package hireq
 
 import (
 	"net/http"
@@ -9,12 +9,12 @@ import (
 var std = New()
 
 // Std instance
-func Std() *HReq {
+func Std() *HiReq {
 	return std
 }
 
 // Reset std
-func Reset() *HReq {
+func Reset() *HiReq {
 	std.header = make(http.Header)
 
 	std.bodyProvider = nil
@@ -22,13 +22,13 @@ func Reset() *HReq {
 	return std
 }
 
-func reset() *HReq {
+func reset() *HiReq {
 	std.bodyProvider = nil
 	return std
 }
 
 // BaseURL set base URL for request
-func BaseURL(baseURL string) *HReq {
+func BaseURL(baseURL string) *HiReq {
 	return std.BaseURL(baseURL)
 }
 

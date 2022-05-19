@@ -1,5 +1,5 @@
-// Package hreq is a simple http client request builder, inspired from https://github.com/dghubble/sling
-package hreq
+// Package hireq is a simple http client request builder, inspired from https://github.com/dghubble/sling
+package hireq
 
 import (
 	"bytes"
@@ -16,6 +16,9 @@ import (
 	"github.com/gookit/goutil/strutil"
 )
 
+// DefaultDoer for request.
+var DefaultDoer = http.DefaultClient
+
 // HandleFunc for the Middleware
 type HandleFunc func(r *http.Request) (*Response, error)
 
@@ -27,8 +30,8 @@ type RequestCreator interface {
 // RequestCreatorFunc func
 type RequestCreatorFunc func(method, target string, body io.Reader) *http.Request
 
-// HReq is an HTTP Request builder and sender.
-type HReq struct {
+// HiReq is an HTTP Request builder and sender.
+type HiReq struct {
 	client httpreq.Doer
 	// core handler.
 	handler HandleFunc
@@ -49,8 +52,8 @@ type HReq struct {
 }
 
 // New create
-func New(baseURL ...string) *HReq {
-	h := &HReq{
+func New(baseURL ...string) *HiReq {
+	h := &HiReq{
 		client: http.DefaultClient,
 		method: http.MethodGet,
 		header: make(http.Header),
@@ -66,14 +69,14 @@ func New(baseURL ...string) *HReq {
 }
 
 // New create an instance from current.
-func (h *HReq) New() *HReq {
+func (h *HiReq) New() *HiReq {
 	// copy Headers pairs into new Header map
 	headerCopy := make(http.Header)
 	for k, v := range h.header {
 		headerCopy[k] = v
 	}
 
-	return &HReq{
+	return &HiReq{
 		client:  h.client,
 		method:  h.method,
 		baseURL: h.baseURL,
@@ -87,29 +90,29 @@ func (h *HReq) New() *HReq {
 // ------------ Config ------------
 
 // Doer custom set http request doer.
-// If a nil client is given, the http.DefaultClient will be used.
-func (h *HReq) Doer(doer httpreq.Doer) *HReq {
+// If a nil client is given, the DefaultDoer will be used.
+func (h *HiReq) Doer(doer httpreq.Doer) *HiReq {
 	if doer != nil {
 		h.client = doer
 	} else {
-		h.client = http.DefaultClient
+		h.client = DefaultDoer
 	}
 
 	return h
 }
 
 // Client custom set http request doer
-func (h *HReq) Client(doer httpreq.Doer) *HReq {
+func (h *HiReq) Client(doer httpreq.Doer) *HiReq {
 	return h.Doer(doer)
 }
 
 // HttpClient custom set http client as request doer
-func (h *HReq) HttpClient(hClient *http.Client) *HReq {
+func (h *HiReq) HttpClient(hClient *http.Client) *HiReq {
 	return h.Doer(hClient)
 }
 
 // Config custom config http request doer
-func (h *HReq) Config(fn func(doer httpreq.Doer)) *HReq {
+func (h *HiReq) Config(fn func(doer httpreq.Doer)) *HiReq {
 	fn(h.client)
 	return h
 }
@@ -120,7 +123,7 @@ func (h *HReq) Config(fn func(doer httpreq.Doer)) *HReq {
 // 	h.ConfigHClient(func(hClient *http.Client) {
 //		hClient.Timeout = 30 * time.Second
 // 	})
-func (h *HReq) ConfigHClient(fn func(hClient *http.Client)) *HReq {
+func (h *HiReq) ConfigHClient(fn func(hClient *http.Client)) *HiReq {
 	if hc, ok := h.client.(*http.Client); ok {
 		fn(hc)
 	} else {
@@ -131,22 +134,22 @@ func (h *HReq) ConfigHClient(fn func(hClient *http.Client)) *HReq {
 }
 
 // Use one or multi middlewares
-func (h *HReq) Use(middles ...Middleware) *HReq {
+func (h *HiReq) Use(middles ...Middleware) *HiReq {
 	return h.Middlewares(middles...)
 }
 
 // Uses one or multi middlewares
-func (h *HReq) Uses(middles ...Middleware) *HReq {
+func (h *HiReq) Uses(middles ...Middleware) *HiReq {
 	return h.Middlewares(middles...)
 }
 
 // Middleware add one or multi middlewares
-func (h *HReq) Middleware(middles ...Middleware) *HReq {
+func (h *HiReq) Middleware(middles ...Middleware) *HiReq {
 	return h.Middlewares(middles...)
 }
 
 // Middlewares add one or multi middlewares
-func (h *HReq) Middlewares(middles ...Middleware) *HReq {
+func (h *HiReq) Middlewares(middles ...Middleware) *HiReq {
 	h.middles = append(h.middles, middles...)
 	return h
 }
@@ -154,136 +157,136 @@ func (h *HReq) Middlewares(middles ...Middleware) *HReq {
 // ------------ Method ------------
 
 // Method set http method name.
-func (h *HReq) Method(method string) *HReq {
+func (h *HiReq) Method(method string) *HiReq {
 	h.method = method
 	return h
 }
 
 // Head sets the method to HEAD and request the pathURL, then send request and return response.
-func (h *HReq) Head(pathURL string) *HReq {
+func (h *HiReq) Head(pathURL string) *HiReq {
 	return h.Method(http.MethodHead).PathURL(pathURL)
 }
 
 // HeadDo sets the method to HEAD and request the pathURL,
 // then send request and return response.
-func (h *HReq) HeadDo(pathURL string) (*Response, error) {
+func (h *HiReq) HeadDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodHead)
 }
 
 // Get sets the method to GET and sets the given pathURL
-func (h *HReq) Get(pathURL string) *HReq {
+func (h *HiReq) Get(pathURL string) *HiReq {
 	return h.Method(http.MethodGet).PathURL(pathURL)
 }
 
 // GetDo sets the method to GET and sets the given pathURL,
 // then send request and return response.
-func (h *HReq) GetDo(pathURL string) (*Response, error) {
+func (h *HiReq) GetDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodGet)
 }
 
 // Post sets the method to POST and sets the given pathURL
-func (h *HReq) Post(pathURL string) *HReq {
+func (h *HiReq) Post(pathURL string) *HiReq {
 	return h.Method(http.MethodPost).PathURL(pathURL)
 }
 
 // PostDo sets the method to POST and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) PostDo(pathURL string) (*Response, error) {
+func (h *HiReq) PostDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPost)
 }
 
 // Put sets the method to PUT and sets the given pathURL
-func (h *HReq) Put(pathURL string) *HReq {
+func (h *HiReq) Put(pathURL string) *HiReq {
 	return h.Method(http.MethodPut).PathURL(pathURL)
 }
 
 // PutDo sets the method to PUT and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) PutDo(pathURL string) (*Response, error) {
+func (h *HiReq) PutDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPut)
 }
 
 // Patch sets the method to PATCH and sets the given pathURL
-func (h *HReq) Patch(pathURL string) *HReq {
+func (h *HiReq) Patch(pathURL string) *HiReq {
 	return h.Method(http.MethodPatch).PathURL(pathURL)
 }
 
 // PatchDo sets the method to PATCH and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) PatchDo(pathURL string) (*Response, error) {
+func (h *HiReq) PatchDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodPatch)
 }
 
 // Delete sets the method to DELETE and sets the given pathURL
-func (h *HReq) Delete(pathURL string) *HReq {
+func (h *HiReq) Delete(pathURL string) *HiReq {
 	return h.Method(http.MethodDelete).PathURL(pathURL)
 }
 
 // DeleteDo sets the method to DELETE and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) DeleteDo(pathURL string) (*Response, error) {
+func (h *HiReq) DeleteDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodDelete)
 }
 
 // Trace sets the method to TRACE and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Trace(pathURL string) *HReq {
+func (h *HiReq) Trace(pathURL string) *HiReq {
 	return h.Method(http.MethodTrace).PathURL(pathURL)
 }
 
 // TraceDo sets the method to TRACE and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) TraceDo(pathURL string) (*Response, error) {
+func (h *HiReq) TraceDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodTrace)
 }
 
 // Options sets the method to OPTIONS and request the pathURL,
 // then send request and return response.
-func (h *HReq) Options(pathURL string) *HReq {
+func (h *HiReq) Options(pathURL string) *HiReq {
 	return h.Method(http.MethodOptions).PathURL(pathURL)
 }
 
 // OptionsDo sets the method to OPTIONS and request the pathURL,
 // then send request and return response.
-func (h *HReq) OptionsDo(pathURL string) (*Response, error) {
+func (h *HiReq) OptionsDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodOptions)
 }
 
 // Connect sets the method to CONNECT and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) Connect(pathURL string) (*Response, error) {
+func (h *HiReq) Connect(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodConnect)
 }
 
 // ConnectDo sets the method to CONNECT and sets the given pathURL,
 // then send request and return http response.
-func (h *HReq) ConnectDo(pathURL string) (*Response, error) {
+func (h *HiReq) ConnectDo(pathURL string) (*Response, error) {
 	return h.Send(pathURL, http.MethodConnect)
 }
 
 // ----------- URL, query params ------------
 
 // BaseURL set base URL for all request
-func (h *HReq) BaseURL(baseURL string) *HReq {
+func (h *HiReq) BaseURL(baseURL string) *HiReq {
 	h.baseURL = baseURL
 	return h
 }
 
 // PathURL set path URL for current request
-func (h *HReq) PathURL(pathURL string) *HReq {
+func (h *HiReq) PathURL(pathURL string) *HiReq {
 	h.pathURL = pathURL
 	return h
 }
 
 // QueryParam appends new k-v param to the query string.
-func (h *HReq) QueryParam(key string, value interface{}) *HReq {
+func (h *HiReq) QueryParam(key string, value interface{}) *HiReq {
 	h.queryParams.Add(key, strutil.MustString(value))
 	return h
 }
 
 // QueryParams appends url.Values/map[string]string to the query string.
 // The value will be encoded as url query parameters on send requests (see Send()).
-func (h *HReq) QueryParams(ps interface{}) *HReq {
+func (h *HiReq) QueryParams(ps interface{}) *HiReq {
 	if ps != nil {
 		queryValues := httpreq.ToQueryValues(ps)
 
@@ -299,7 +302,7 @@ func (h *HReq) QueryParams(ps interface{}) *HReq {
 
 // QueryValues appends url.Values to the query string.
 // The value will be encoded as url query parameters on new requests (see Send()).
-func (h *HReq) QueryValues(values url.Values) *HReq {
+func (h *HiReq) QueryValues(values url.Values) *HiReq {
 	return h.QueryParams(values)
 }
 
@@ -307,21 +310,21 @@ func (h *HReq) QueryValues(values url.Values) *HReq {
 
 // AddHeader adds the key, value pair in Headers, appending values for existing keys
 // to the key's values. Header keys are canonicalized.
-func (h *HReq) AddHeader(key, value string) *HReq {
+func (h *HiReq) AddHeader(key, value string) *HiReq {
 	h.header.Add(key, value)
 	return h
 }
 
 // SetHeader sets the key, value pair in Headers, replacing existing values
 // associated with key. Header keys are canonicalized.
-func (h *HReq) SetHeader(key, value string) *HReq {
+func (h *HiReq) SetHeader(key, value string) *HiReq {
 	h.header.Set(key, value)
 	return h
 }
 
 // AddHeaders adds all the http.Header values, appending values for existing keys
 // to the key's values. Header keys are canonicalized.
-func (h *HReq) AddHeaders(headers http.Header) *HReq {
+func (h *HiReq) AddHeaders(headers http.Header) *HiReq {
 	for key, values := range headers {
 		for i := range values {
 			h.header.Add(key, values[i])
@@ -332,7 +335,7 @@ func (h *HReq) AddHeaders(headers http.Header) *HReq {
 
 // SetHeaders sets all the http.Header values, replacing values for existing keys
 // to the key's values. Header keys are canonicalized.
-func (h *HReq) SetHeaders(headers http.Header) *HReq {
+func (h *HiReq) SetHeaders(headers http.Header) *HiReq {
 	for key, values := range headers {
 		for i := range values {
 			if i == 0 {
@@ -352,49 +355,49 @@ func (h *HReq) SetHeaders(headers http.Header) *HReq {
 //	h.ContentType(httpctype.JSON)
 //	// form type
 //	h.ContentType(httpctype.Form)
-func (h *HReq) ContentType(value string) *HReq {
+func (h *HiReq) ContentType(value string) *HiReq {
 	return h.SetHeader(httpctype.Key, value)
 }
 
 // XMLType with xml Content-Type header
-func (h *HReq) XMLType() *HReq {
+func (h *HiReq) XMLType() *HiReq {
 	return h.SetHeader(httpctype.Key, httpctype.XML)
 }
 
 // JSONType with json Content-Type header
-func (h *HReq) JSONType() *HReq {
+func (h *HiReq) JSONType() *HiReq {
 	return h.SetHeader(httpctype.Key, httpctype.JSON)
 }
 
 // FormType with from Content-Type header
-func (h *HReq) FormType() *HReq {
+func (h *HiReq) FormType() *HiReq {
 	return h.SetHeader(httpctype.Key, httpctype.Form)
 }
 
 // MultipartType with multipart/form-data Content-Type header
-func (h *HReq) MultipartType() *HReq {
+func (h *HiReq) MultipartType() *HiReq {
 	return h.SetHeader(httpctype.Key, httpctype.FormData)
 }
 
 // UserAgent with User-Agent header setting.
-func (h *HReq) UserAgent(value string) *HReq {
+func (h *HiReq) UserAgent(value string) *HiReq {
 	return h.SetHeader("User-Agent", value)
 }
 
 // UserAuth with user auth header value.
-func (h *HReq) UserAuth(value string) *HReq {
+func (h *HiReq) UserAuth(value string) *HiReq {
 	return h.SetHeader("Authorization", value)
 }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password. With HTTP Basic Authentication
 // the provided username and password are not encrypted.
-func (h *HReq) BasicAuth(username, password string) *HReq {
+func (h *HiReq) BasicAuth(username, password string) *HiReq {
 	return h.SetHeader("Authorization", httpreq.BuildBasicAuth(username, password))
 }
 
 // SetCookies to request
-func (h *HReq) SetCookies(hcs ...*http.Cookie) *HReq {
+func (h *HiReq) SetCookies(hcs ...*http.Cookie) *HiReq {
 	var b strings.Builder
 	for i, hc := range hcs {
 		if i > 0 {
@@ -412,7 +415,7 @@ func (h *HReq) SetCookies(hcs ...*http.Cookie) *HReq {
 //	h.New().
 //		SetCookieString("name=inhere;age=30").
 //		GetDo("/some/api")
-func (h *HReq) SetCookieString(value string) *HReq {
+func (h *HiReq) SetCookieString(value string) *HiReq {
 	// return h.AddHeader("Set-Cookie", value)
 	return h.AddHeader("Cookie", value)
 }
@@ -420,7 +423,7 @@ func (h *HReq) SetCookieString(value string) *HReq {
 // ----------- Request Body ------------
 
 // Body with custom body
-func (h *HReq) Body(body interface{}) *HReq {
+func (h *HiReq) Body(body interface{}) *HiReq {
 	switch typVal := body.(type) {
 	case io.Reader:
 		h.BodyReader(typVal)
@@ -441,19 +444,19 @@ func (h *HReq) Body(body interface{}) *HReq {
 }
 
 // BodyReader with custom io reader body
-func (h *HReq) BodyReader(r io.Reader) *HReq {
+func (h *HiReq) BodyReader(r io.Reader) *HiReq {
 	h.bodyProvider = bodyProvider{body: r}
 	return h
 }
 
 // BodyProvider with custom body provider
-func (h *HReq) BodyProvider(bp BodyProvider) *HReq {
+func (h *HiReq) BodyProvider(bp BodyProvider) *HiReq {
 	h.bodyProvider = bp
 	return h
 }
 
 // FileContentsBody read file contents as body
-func (h *HReq) FileContentsBody(filepath string) *HReq {
+func (h *HiReq) FileContentsBody(filepath string) *HiReq {
 	file, err := os.OpenFile(filepath, os.O_RDONLY, fsutil.DefaultFilePerm)
 	if err != nil {
 		panic(err)
@@ -463,7 +466,7 @@ func (h *HReq) FileContentsBody(filepath string) *HReq {
 }
 
 // JSONBody with JSON data body
-func (h *HReq) JSONBody(jsonData interface{}) *HReq {
+func (h *HiReq) JSONBody(jsonData interface{}) *HiReq {
 	h.bodyProvider = jsonBodyProvider{
 		payload: jsonData,
 	}
@@ -471,7 +474,7 @@ func (h *HReq) JSONBody(jsonData interface{}) *HReq {
 }
 
 // FormBody with form data body
-func (h *HReq) FormBody(formData interface{}) *HReq {
+func (h *HiReq) FormBody(formData interface{}) *HiReq {
 	h.bodyProvider = formBodyProvider{
 		payload: formData,
 	}
@@ -479,17 +482,17 @@ func (h *HReq) FormBody(formData interface{}) *HReq {
 }
 
 // BytesBody with custom string body
-func (h *HReq) BytesBody(bs []byte) *HReq {
+func (h *HiReq) BytesBody(bs []byte) *HiReq {
 	return h.BodyReader(bytes.NewReader(bs))
 }
 
 // StringBody with custom string body
-func (h *HReq) StringBody(s string) *HReq {
+func (h *HiReq) StringBody(s string) *HiReq {
 	return h.BodyReader(strings.NewReader(s))
 }
 
 // Multipart with custom multipart body
-func (h *HReq) Multipart(key, value string) *HReq {
+func (h *HiReq) Multipart(key, value string) *HiReq {
 	// TODO
 	return h
 }
@@ -497,17 +500,17 @@ func (h *HReq) Multipart(key, value string) *HReq {
 // ----------- Do send request ------------
 
 // Do send request and return response
-func (h *HReq) Do(pathURLAndMethod ...string) (*Response, error) {
+func (h *HiReq) Do(pathURLAndMethod ...string) (*Response, error) {
 	return h.SendWithCtx(context.Background(), pathURLAndMethod...)
 }
 
 // Send request and return response
-func (h *HReq) Send(pathURLAndMethod ...string) (*Response, error) {
+func (h *HiReq) Send(pathURLAndMethod ...string) (*Response, error) {
 	return h.SendWithCtx(context.Background(), pathURLAndMethod...)
 }
 
 // MustSend send request and return response, will panic on error
-func (h *HReq) MustSend(pathURLAndMethod ...string) *Response {
+func (h *HiReq) MustSend(pathURLAndMethod ...string) *Response {
 	resp, err := h.SendWithCtx(context.Background(), pathURLAndMethod...)
 	if err != nil {
 		panic(err)
@@ -516,13 +519,28 @@ func (h *HReq) MustSend(pathURLAndMethod ...string) *Response {
 	return resp
 }
 
+// SendRaw http request text.
+func (h *HiReq) SendRaw(raw string) (*Response, error) {
+	method := "GET"
+	reqUrl := "TODO"
+
+	var body io.Reader
+
+	req, err := http.NewRequest(method, reqUrl, body)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.SendRequest(req)
+}
+
 // DoWithCtx request with context, then return response
-func (h *HReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
+func (h *HiReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
 	return h.SendWithCtx(ctx, pathURLAndMethod...)
 }
 
 // SendWithCtx request with context, then return response
-func (h *HReq) SendWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
+func (h *HiReq) SendWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
 	req, err := h.NewRequestWithCtx(ctx, pathURLAndMethod...)
 	if err != nil {
 		return nil, err
@@ -533,7 +551,7 @@ func (h *HReq) SendWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Re
 }
 
 // SendRequest send request
-func (h *HReq) SendRequest(req *http.Request) (*Response, error) {
+func (h *HiReq) SendRequest(req *http.Request) (*Response, error) {
 	// call before send.
 	if h.beforeSend != nil {
 		h.beforeSend(req)
@@ -549,17 +567,17 @@ func (h *HReq) SendRequest(req *http.Request) (*Response, error) {
 // ----------- Build request ------------
 
 // Build new request
-func (h *HReq) Build(pathURLAndMethod ...string) (*http.Request, error) {
+func (h *HiReq) Build(pathURLAndMethod ...string) (*http.Request, error) {
 	return h.NewRequestWithCtx(context.Background(), pathURLAndMethod...)
 }
 
 // NewRequest build new request
-func (h *HReq) NewRequest(pathURLAndMethod ...string) (*http.Request, error) {
+func (h *HiReq) NewRequest(pathURLAndMethod ...string) (*http.Request, error) {
 	return h.NewRequestWithCtx(context.Background(), pathURLAndMethod...)
 }
 
 // NewRequestWithCtx build new request with context
-func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string) (*http.Request, error) {
+func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string) (*http.Request, error) {
 	pathURL := h.pathURL
 	if ln := len(pathURLAndMethod); ln > 0 {
 		pathURL = pathURLAndMethod[0]
@@ -613,7 +631,7 @@ func (h *HReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string
 }
 
 // String request to string.
-func (h *HReq) String() string {
+func (h *HiReq) String() string {
 	return ToString(h.Build())
 }
 

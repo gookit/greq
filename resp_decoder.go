@@ -1,4 +1,4 @@
-package hreq
+package hireq
 
 import (
 	"encoding/json"

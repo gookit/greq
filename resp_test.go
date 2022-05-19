@@ -1,15 +1,15 @@
-package hreq_test
+package hireq_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/gookit/hreq"
+	"github.com/gookit/hireq"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestResponse_String(t *testing.T) {
-	resp, err := hreq.New(testBaseURL).
+	resp, err := hireq.New(testBaseURL).
 		UserAgent("custom-client/1.0").
 		GetDo("/get")
 

@@ -1,4 +1,4 @@
-package hreq
+package hireq
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 // Response is a http.Response wrapper
 type Response struct {
 	*http.Response
-	// decoder for response, default will extends from HReq.respDecoder
+	// decoder for response, default will extends from HiReq.respDecoder
 	decoder RespDecoder
 }
 
@@ -44,7 +44,7 @@ func (r *Response) ContentType() string {
 // IsContentType check response content type is equals the given.
 //
 // Usage:
-//	resp, err := hreq.Post("some.host/path")
+//	resp, err := hireq.Post("some.host/path")
 //  ok := resp.IsContentType("application/xml")
 //
 func (r *Response) IsContentType(prefix string) bool {
@@ -59,12 +59,33 @@ func (r *Response) IsJSONType() bool {
 
 // Decode get the raw http.Response
 func (r *Response) Decode(ptr interface{}) error {
+	defer r.CloseBodyNoErr()
 	return r.decoder.Decode(r.Response, ptr)
 }
 
 // SetDecoder for response
 func (r *Response) SetDecoder(decoder RespDecoder) {
 	r.decoder = decoder
+}
+
+// BodyBuffer read body to buffer.
+//
+// NOTICE: must close resp body.
+func (r *Response) BodyBuffer() *bytes.Buffer {
+	buf := &bytes.Buffer{}
+	// prof: Allocate memory in advance
+	if r.ContentLength > bytes.MinRead {
+		buf.Grow(int(r.ContentLength) + 2)
+	}
+
+	// NOTICE: must close resp body.
+	defer r.CloseBodyNoErr()
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	return buf
 }
 
 // HeaderString convert response headers to string
@@ -82,13 +103,7 @@ func (r *Response) HeaderString() string {
 
 // BodyString convert response body to string
 func (r *Response) BodyString() string {
-	if r.IsEmptyBody() {
-		return ""
-	}
-
-	buf := &bytes.Buffer{}
-	_, _ = buf.ReadFrom(r.Body)
-	return buf.String()
+	return r.BodyBuffer().String()
 }
 
 // String convert Response to string
@@ -117,4 +132,14 @@ func (r *Response) String() string {
 // Result get the raw http.Response
 func (r *Response) Result() *http.Response {
 	return r.Response
+}
+
+// CloseBody close resp body
+func (r *Response) CloseBody() error {
+	return r.Body.Close()
+}
+
+// CloseBodyNoErr close resp body, ignore error
+func (r *Response) CloseBodyNoErr() {
+	_ = r.Body.Close()
 }

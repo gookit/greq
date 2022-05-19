@@ -1,4 +1,4 @@
-package hreq
+package hireq
 
 import (
 	"bytes"
@@ -71,6 +71,11 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 	values, ok := p.payload.(url.Values)
 	if ok {
 		return strings.NewReader(values.Encode()), nil
+	}
+
+	mps, ok := p.payload.(map[string][]string)
+	if ok {
+		return strings.NewReader(url.Values(mps).Encode()), nil
 	}
 
 	if str, ok := p.payload.(string); ok {

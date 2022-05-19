@@ -1,20 +1,20 @@
-package hreq_test
+package hireq_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/hreq"
+	"github.com/gookit/hireq"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() {
-	hreq.BaseURL(testBaseURL)
+	hireq.BaseURL(testBaseURL)
 }
 
 func TestGetDo(t *testing.T) {
-	resp, err := hreq.GetDo("/get")
+	resp, err := hireq.GetDo("/get")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -27,7 +27,7 @@ func TestGetDo(t *testing.T) {
 }
 
 func TestGetDo_with_QueryParams(t *testing.T) {
-	resp, err := hreq.Std().
+	resp, err := hireq.Std().
 		JSONType().
 		QueryParams(map[string]string{
 			"name": "inhere",
@@ -46,7 +46,7 @@ func TestGetDo_with_QueryParams(t *testing.T) {
 }
 
 func TestPostDo(t *testing.T) {
-	resp, err := hreq.PostDo("/post")
+	resp, err := hireq.PostDo("/post")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -59,7 +59,7 @@ func TestPostDo(t *testing.T) {
 }
 
 func TestPutDo(t *testing.T) {
-	resp, err := hreq.PutDo("/put")
+	resp, err := hireq.PutDo("/put")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -72,7 +72,7 @@ func TestPutDo(t *testing.T) {
 }
 
 func TestPatchDo(t *testing.T) {
-	resp, err := hreq.PatchDo("/patch")
+	resp, err := hireq.PatchDo("/patch")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -85,7 +85,7 @@ func TestPatchDo(t *testing.T) {
 }
 
 func TestDeleteDo(t *testing.T) {
-	resp, err := hreq.DeleteDo("/delete")
+	resp, err := hireq.DeleteDo("/delete")
 
 	assert.NoError(t, err)
 	assert.True(t, resp.IsOK())
@@ -98,7 +98,7 @@ func TestDeleteDo(t *testing.T) {
 }
 
 func TestHeadDo(t *testing.T) {
-	resp, err := hreq.Reset().HeadDo("/")
+	resp, err := hireq.Reset().HeadDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
@@ -110,7 +110,7 @@ func TestHeadDo(t *testing.T) {
 }
 
 func TestOptionsDo(t *testing.T) {
-	resp, err := hreq.OptionsDo("/")
+	resp, err := hireq.OptionsDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
@@ -123,7 +123,7 @@ func TestOptionsDo(t *testing.T) {
 }
 
 func TestTraceDo(t *testing.T) {
-	resp, err := hreq.TraceDo("/")
+	resp, err := hireq.TraceDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)
@@ -131,7 +131,7 @@ func TestTraceDo(t *testing.T) {
 }
 
 func TestConnectDo(t *testing.T) {
-	resp, err := hreq.ConnectDo("/")
+	resp, err := hireq.ConnectDo("/")
 	fmt.Println(resp.String())
 
 	assert.NoError(t, err)

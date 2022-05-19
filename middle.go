@@ -1,4 +1,4 @@
-package hreq
+package hireq
 
 import "net/http"
 
@@ -15,7 +15,7 @@ func (mf MiddleFunc) Handle(r *http.Request, next HandleFunc) (*Response, error)
 	return mf(r, next)
 }
 
-func (h *HReq) wrapMiddlewares() {
+func (h *HiReq) wrapMiddlewares() {
 	h.handler = func(r *http.Request) (*Response, error) {
 		rawResp, err := h.client.Do(r)
 		if err != nil {
@@ -34,7 +34,7 @@ func (h *HReq) wrapMiddlewares() {
 	}
 }
 
-func (h *HReq) wrapMiddleware(m Middleware) {
+func (h *HiReq) wrapMiddleware(m Middleware) {
 	next := h.handler
 
 	// wrap handler

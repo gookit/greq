@@ -1,4 +1,4 @@
-package hreq_test
+package hireq_test
 
 import (
 	"bytes"
@@ -9,14 +9,14 @@ import (
 
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/netutil/httpreq"
-	"github.com/gookit/hreq"
+	"github.com/gookit/hireq"
 	"github.com/stretchr/testify/assert"
 )
 
 type mid1 struct {
 }
 
-func (m mid1) Handle(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+func (m mid1) Handle(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 	dump.P("MID1++")
 	w, err := next(r)
 	dump.P("MID1--")
@@ -26,16 +26,16 @@ func (m mid1) Handle(r *http.Request, next hreq.HandleFunc) (*hreq.Response, err
 func TestHReq_Use_Middleware(t *testing.T) {
 	buf := &bytes.Buffer{}
 
-	mid2 := func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid2 := func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		dump.P("MID2++")
 		w, err := next(r)
 		dump.P("MID2--")
 		return w, err
 	}
 
-	resp, err := hreq.New(testBaseURL).
+	resp, err := hireq.New(testBaseURL).
 		Doer(testDoer).
-		Uses(&mid1{}, hreq.MiddleFunc(mid2)).
+		Uses(&mid1{}, hireq.MiddleFunc(mid2)).
 		GetDo("/get")
 
 	assert.NoError(t, err)
@@ -48,14 +48,14 @@ func TestHReq_Use_Middleware(t *testing.T) {
 }
 
 func TestHReq_Use_MiddleFunc(t *testing.T) {
-	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid0 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		dump.P("MID0++")
 		w, err := next(r)
 		dump.P("MID0--")
 		return w, err
 	})
 
-	resp, err := hreq.New(testBaseURL).
+	resp, err := hireq.New(testBaseURL).
 		Doer(testDoer).
 		Middleware(mid0).
 		PutDo("/get")
@@ -68,28 +68,28 @@ func TestHReq_Use_MiddleFunc(t *testing.T) {
 
 func TestHReq_Use_Multi_MiddleFunc(t *testing.T) {
 	buf := &bytes.Buffer{}
-	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid0 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID0>>")
 		w, err := next(r)
 		buf.WriteString(">>MID0")
 		return w, err
 	})
 
-	mid1 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid1 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID1>>")
 		w, err := next(r)
 		buf.WriteString(">>MID1")
 		return w, err
 	})
 
-	mid2 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid2 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID2>>")
 		w, err := next(r)
 		buf.WriteString(">>MID2")
 		return w, err
 	})
 
-	resp, err := hreq.New(testBaseURL).
+	resp, err := hireq.New(testBaseURL).
 		Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
 			tw := httptest.NewRecorder()
 			buf.WriteString("(CORE)")

@@ -1,15 +1,15 @@
 # HReq
 
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/hreq?style=flat-square)
-[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/hreq)](https://github.com/gookit/goutil)
-[![GoDoc](https://godoc.org/github.com/gookit/hreq?status.svg)](https://pkg.go.dev/github.com/gookit/hreq)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gookit/hreq)](https://goreportcard.com/report/github.com/gookit/hreq)
-[![Unit-Tests](https://github.com/gookit/hreq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/hreq/actions)
-[![Coverage Status](https://coveralls.io/repos/github/gookit/hreq/badge.svg?branch=main)](https://coveralls.io/github/gookit/hreq?branch=main)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/hireq?style=flat-square)
+[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/hireq)](https://github.com/gookit/goutil)
+[![GoDoc](https://godoc.org/github.com/gookit/hireq?status.svg)](https://pkg.go.dev/github.com/gookit/hireq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gookit/hireq)](https://goreportcard.com/report/github.com/gookit/hireq)
+[![Unit-Tests](https://github.com/gookit/hireq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/hireq/actions)
+[![Coverage Status](https://coveralls.io/repos/github/gookit/hireq/badge.svg?branch=main)](https://coveralls.io/github/gookit/hireq?branch=main)
 
 **HReq** A simple http client request builder and sender
 
-> `hreq` inspired from https://github.com/dghubble/sling and more projects, please see refers.
+> `hireq` inspired from https://github.com/dghubble/sling and more projects, please see refers.
 
 ## 功能说明
 
@@ -21,7 +21,7 @@
 ## Install
 
 ```bash
-go get github.com/gookit/hreq
+go get github.com/gookit/hireq
 ```
 
 ## Quick start
@@ -31,11 +31,11 @@ package main
 
 import (
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/hreq"
+	"github.com/gookit/hireq"
 )
 
 func main() {
-	resp, err := hreq.New("https://httpbin.org").
+	resp, err := hireq.New("https://httpbin.org").
 		JSONType().
 		UserAgent("custom-client/1.0").
 		Get("/get")
@@ -57,7 +57,7 @@ func main() {
 Result:
 
 ```text
-PRINT AT github.com/gookit/hreq_test.TestHReq_Send(hreq_test.go:73)
+PRINT AT github.com/gookit/hireq_test.TestHReq_Send(hireq_test.go:73)
 map[string]interface {} { #len=4
   "args": map[string]interface {} { #len=0
   },
@@ -76,28 +76,28 @@ map[string]interface {} { #len=4
 
 ```go
 	buf := &bytes.Buffer{}
-	mid0 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid0 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID0>>")
 		w, err := next(r)
 		buf.WriteString(">>MID0")
 		return w, err
 	})
 
-	mid1 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid1 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID1>>")
 		w, err := next(r)
 		buf.WriteString(">>MID1")
 		return w, err
 	})
 
-	mid2 := hreq.MiddleFunc(func(r *http.Request, next hreq.HandleFunc) (*hreq.Response, error) {
+	mid2 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
 		buf.WriteString("MID2>>")
 		w, err := next(r)
 		buf.WriteString(">>MID2")
 		return w, err
 	})
 
-	resp, err := hreq.New("https://httpbin.org").
+	resp, err := hireq.New("https://httpbin.org").
 		Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
 			tw := httptest.NewRecorder()
 			buf.WriteString("(CORE)")
@@ -119,7 +119,7 @@ MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 
 ### Response to string
 
-`hreq.Response.String()` can convert response to string.
+`hireq.Response.String()` can convert response to string.
 
 ```go
 package main
@@ -128,11 +128,11 @@ import (
 	"fmt"
 	
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/hreq"
+	"github.com/gookit/hireq"
 )
 
 func main() {
-	resp, err := hreq.New("https://httpbin.org").
+	resp, err := hireq.New("https://httpbin.org").
 		UserAgent("custom-client/1.0").
 		Send("/get")
 	
