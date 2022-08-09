@@ -1,4 +1,4 @@
-package hireq
+package greq
 
 import (
 	"encoding/json"

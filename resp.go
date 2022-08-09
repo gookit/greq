@@ -1,4 +1,4 @@
-package hireq
+package greq
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ func (r *Response) ContentType() string {
 // IsContentType check response content type is equals the given.
 //
 // Usage:
-//	resp, err := hireq.Post("some.host/path")
+//	resp, err := greq.Post("some.host/path")
 //  ok := resp.IsContentType("application/xml")
 //
 func (r *Response) IsContentType(prefix string) bool {

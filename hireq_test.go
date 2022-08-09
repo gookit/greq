@@ -1,4 +1,4 @@
-package hireq_test
+package greq_test
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpreq"
-	"github.com/gookit/hireq"
+	"github.com/gookit/greq"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,14 +36,14 @@ var testDoer = httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) 
 func TestHReq_Doer(t *testing.T) {
 	buf := &bytes.Buffer{}
 
-	mid0 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
+	mid0 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
 		dump.P("MID0++")
 		w, err := next(r)
 		dump.P("MID0--")
 		return w, err
 	})
 
-	resp, err := hireq.New(testBaseURL).
+	resp, err := greq.New(testBaseURL).
 		Doer(testDoer).
 		Use(mid0).
 		UserAgent("custom-client/1.0").
@@ -58,7 +58,7 @@ func TestHReq_Doer(t *testing.T) {
 }
 
 func TestHReq_Send(t *testing.T) {
-	resp, err := hireq.New(testBaseURL).
+	resp, err := greq.New(testBaseURL).
 		UserAgent("custom-client/1.0").
 		Send("/get")
 
@@ -79,7 +79,7 @@ func TestHReq_Send(t *testing.T) {
 }
 
 func TestHReq_GetDo(t *testing.T) {
-	resp, err := hireq.New(testBaseURL).
+	resp, err := greq.New(testBaseURL).
 		JSONType().
 		GetDo("/get")
 
@@ -94,7 +94,7 @@ func TestHReq_GetDo(t *testing.T) {
 }
 
 func TestHReq_PostDo(t *testing.T) {
-	resp, err := hireq.New(testBaseURL).
+	resp, err := greq.New(testBaseURL).
 		JSONType().
 		PostDo("/post")
 
@@ -109,7 +109,7 @@ func TestHReq_PostDo(t *testing.T) {
 }
 
 func TestHReq_String(t *testing.T) {
-	str := hireq.New(testBaseURL).
+	str := greq.New(testBaseURL).
 		UserAgent("some-client/1.0").
 		BasicAuth("inhere", "some string").
 		JSONType().

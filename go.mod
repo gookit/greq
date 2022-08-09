@@ -1,4 +1,4 @@
-module github.com/gookit/hireq
+module github.com/gookit/greq
 
 go 1.15
 

@@ -1,15 +1,15 @@
 # HReq
 
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/hireq?style=flat-square)
-[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/hireq)](https://github.com/gookit/goutil)
-[![GoDoc](https://godoc.org/github.com/gookit/hireq?status.svg)](https://pkg.go.dev/github.com/gookit/hireq)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gookit/hireq)](https://goreportcard.com/report/github.com/gookit/hireq)
-[![Unit-Tests](https://github.com/gookit/hireq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/hireq/actions)
-[![Coverage Status](https://coveralls.io/repos/github/gookit/hireq/badge.svg?branch=main)](https://coveralls.io/github/gookit/hireq?branch=main)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/greq?style=flat-square)
+[![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/greq)](https://github.com/gookit/goutil)
+[![GoDoc](https://godoc.org/github.com/gookit/greq?status.svg)](https://pkg.go.dev/github.com/gookit/greq)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gookit/greq)](https://goreportcard.com/report/github.com/gookit/greq)
+[![Unit-Tests](https://github.com/gookit/greq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/greq/actions)
+[![Coverage Status](https://coveralls.io/repos/github/gookit/greq/badge.svg?branch=main)](https://coveralls.io/github/gookit/greq?branch=main)
 
 **HReq** A simple http client request builder and sender
 
-> `hireq` inspired from [dghubble/sling][1] and more projects, please see refers.
+> `greq` inspired from [dghubble/sling][1] and more projects, please see refers.
 
 ## Features
 
@@ -24,7 +24,7 @@
 ## Install
 
 ```bash
-go get github.com/gookit/hireq
+go get github.com/gookit/greq
 ```
 
 ## Quick start
@@ -34,11 +34,11 @@ package main
 
 import (
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/hireq"
+	"github.com/gookit/greq"
 )
 
 func main() {
-	resp, err := hireq.New("https://httpbin.org").
+	resp, err := greq.New("https://httpbin.org").
 		JSONType().
 		UserAgent("custom-client/1.0").
 		PostDo("/post")
@@ -60,7 +60,7 @@ func main() {
 Result:
 
 ```text
-PRINT AT github.com/gookit/hireq_test.TestHReq_Send(hireq_test.go:73)
+PRINT AT github.com/gookit/greq_test.TestHReq_Send(greq_test.go:73)
 map[string]interface {} { #len=4
   "args": map[string]interface {} { #len=0
   },
@@ -78,14 +78,14 @@ map[string]interface {} { #len=4
 ## Request headers
 
 ```go
-hireq.New("some.host/api").
+greq.New("some.host/api").
 	SetHeader("req-id", "a string")
 ```
 
 Set multi at once:
 
 ```go
-hireq.New("some.host/api").
+greq.New("some.host/api").
 	SetHeaders(map[string]string{
 		"req-id": "a string",
 	})
@@ -94,14 +94,14 @@ hireq.New("some.host/api").
 ### Set content type
 
 ```go
-hireq.New("some.host/api").
+greq.New("some.host/api").
     ContentType("text/html")
 ```
 
 Built in `JSONType()` `FromType()` `XMLType()`
 
 ```go
-hireq.New("some.host/api").JSONType()
+greq.New("some.host/api").JSONType()
 ```
 
 
@@ -109,28 +109,28 @@ hireq.New("some.host/api").JSONType()
 
 ```go
 	buf := &bytes.Buffer{}
-	mid0 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
+	mid0 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
 		buf.WriteString("MID0>>")
 		w, err := next(r)
 		buf.WriteString(">>MID0")
 		return w, err
 	})
 
-	mid1 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
+	mid1 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
 		buf.WriteString("MID1>>")
 		w, err := next(r)
 		buf.WriteString(">>MID1")
 		return w, err
 	})
 
-	mid2 := hireq.MiddleFunc(func(r *http.Request, next hireq.HandleFunc) (*hireq.Response, error) {
+	mid2 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
 		buf.WriteString("MID2>>")
 		w, err := next(r)
 		buf.WriteString(">>MID2")
 		return w, err
 	})
 
-	resp, err := hireq.New("https://httpbin.org").
+	resp, err := greq.New("https://httpbin.org").
 		Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
 			tw := httptest.NewRecorder()
 			buf.WriteString("(CORE)")
@@ -166,7 +166,7 @@ MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 ### Request to string
 
 ```go
-    str := hireq.New("https://httpbin.org").
+    str := greq.New("https://httpbin.org").
 		UserAgent("some-client/1.0").
 		BasicAuth("inhere", "some string").
 		JSONType().
@@ -190,7 +190,7 @@ hi, with body
 
 ### Response to string
 
-`hireq.Response.String()` can convert response to string.
+`greq.Response.String()` can convert response to string.
 
 ```go
 package main
@@ -199,11 +199,11 @@ import (
 	"fmt"
 	
 	"github.com/gookit/goutil/dump"
-	"github.com/gookit/hireq"
+	"github.com/gookit/greq"
 )
 
 func main() {
-	resp, err := hireq.New("https://httpbin.org").
+	resp, err := greq.New("https://httpbin.org").
 		UserAgent("custom-client/1.0").
 		Send("/get")
 	

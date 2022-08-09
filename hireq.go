@@ -1,5 +1,5 @@
-// Package hireq is a simple http client request builder, inspired from https://github.com/dghubble/sling
-package hireq
+// Package greq is a simple http client request builder, inspired from https://github.com/dghubble/sling
+package greq
 
 import (
 	"bytes"
