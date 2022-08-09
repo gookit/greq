@@ -9,8 +9,8 @@ import (
 
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/netutil/httpreq"
+	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
-	"github.com/stretchr/testify/assert"
 )
 
 type mid1 struct {
@@ -38,11 +38,11 @@ func TestHReq_Use_Middleware(t *testing.T) {
 		Uses(&mid1{}, greq.MiddleFunc(mid2)).
 		GetDo("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 
 	err = resp.Write(buf)
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 
 	dump.P(buf.String())
 }
@@ -60,7 +60,7 @@ func TestHReq_Use_MiddleFunc(t *testing.T) {
 		Middleware(mid0).
 		PutDo("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	sc := resp.StatusCode
 	assert.True(t, httpreq.IsOK(sc))
 
@@ -98,7 +98,7 @@ func TestHReq_Use_Multi_MiddleFunc(t *testing.T) {
 		Middleware(mid0, mid1, mid2).
 		PatchDo("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 
 	fmt.Println(buf.String())

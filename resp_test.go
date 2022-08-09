@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestResponse_String(t *testing.T) {
@@ -13,7 +13,7 @@ func TestResponse_String(t *testing.T) {
 		UserAgent("custom-client/1.0").
 		GetDo("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 	assert.False(t, resp.IsFail())
 

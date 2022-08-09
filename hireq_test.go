@@ -10,8 +10,8 @@ import (
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpreq"
+	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
-	"github.com/stretchr/testify/assert"
 )
 
 var testBaseURL = "https://httpbin.org"
@@ -49,11 +49,11 @@ func TestHReq_Doer(t *testing.T) {
 		UserAgent("custom-client/1.0").
 		Do("/get", "GET")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 
 	err = resp.Write(buf)
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	dump.P(buf.String())
 }
 
@@ -62,20 +62,20 @@ func TestHReq_Send(t *testing.T) {
 		UserAgent("custom-client/1.0").
 		Send("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 	assert.False(t, resp.IsFail())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	dump.P(retMp)
 
 	assert.Contains(t, retMp, "headers")
 
 	headers := retMp["headers"].(map[string]interface{})
 	assert.Contains(t, headers, "User-Agent")
-	assert.Equal(t, "custom-client/1.0", headers["User-Agent"])
+	assert.Eq(t, "custom-client/1.0", headers["User-Agent"])
 }
 
 func TestHReq_GetDo(t *testing.T) {
@@ -83,13 +83,13 @@ func TestHReq_GetDo(t *testing.T) {
 		JSONType().
 		GetDo("/get")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	dump.P(retMp)
 }
 
@@ -98,13 +98,13 @@ func TestHReq_PostDo(t *testing.T) {
 		JSONType().
 		PostDo("/post")
 
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
 	retMp := make(map[string]interface{})
 	err = resp.Decode(&retMp)
-	assert.NoError(t, err)
+	assert.NoErr(t, err)
 	dump.P(retMp)
 }
 
