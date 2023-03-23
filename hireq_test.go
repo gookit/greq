@@ -66,14 +66,14 @@ func TestHReq_Send(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.False(t, resp.IsFail())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
 
 	assert.Contains(t, retMp, "headers")
 
-	headers := retMp["headers"].(map[string]interface{})
+	headers := retMp["headers"].(map[string]any)
 	assert.Contains(t, headers, "User-Agent")
 	assert.Eq(t, "custom-client/1.0", headers["User-Agent"])
 }
@@ -87,7 +87,7 @@ func TestHReq_GetDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -102,7 +102,7 @@ func TestHReq_PostDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)

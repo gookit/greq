@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpreq"
 )
@@ -44,9 +45,9 @@ func (r *Response) ContentType() string {
 // IsContentType check response content type is equals the given.
 //
 // Usage:
-//	resp, err := greq.Post("some.host/path")
-//  ok := resp.IsContentType("application/xml")
 //
+//		resp, err := greq.Post("some.host/path")
+//	 ok := resp.IsContentType("application/xml")
 func (r *Response) IsContentType(prefix string) bool {
 	val := r.Header.Get(httpctype.Key)
 	return val != "" && strings.HasPrefix(val, prefix)
@@ -58,7 +59,7 @@ func (r *Response) IsJSONType() bool {
 }
 
 // Decode get the raw http.Response
-func (r *Response) Decode(ptr interface{}) error {
+func (r *Response) Decode(ptr any) error {
 	defer r.QuietCloseBody()
 	return r.decoder.Decode(r.Response, ptr)
 }
@@ -104,6 +105,15 @@ func (r *Response) HeaderString() string {
 // BodyString convert response body to string
 func (r *Response) BodyString() string {
 	return r.BodyBuffer().String()
+}
+
+// SaveFile file on the response body is not-nil.
+func (r *Response) SaveFile(file string) (err error) {
+	if r.Body != nil {
+		defer r.QuietCloseBody()
+		err = fsutil.WriteFile(file, r.Body, fsutil.DefaultFilePerm)
+	}
+	return
 }
 
 // String convert Response to string

@@ -3,6 +3,8 @@ package greq
 import (
 	"net/http"
 	"net/url"
+
+	"github.com/gookit/goutil"
 )
 
 // std instance
@@ -32,6 +34,20 @@ func BaseURL(baseURL string) *HiReq {
 	return std.BaseURL(baseURL)
 }
 
+// MustDo sets the method to POST and sets the given pathURL,
+// then send request and return http response.
+func MustDo(method, pathURL string, body ...any) *Response {
+	if len(body) > 0 {
+		std.Body(body[0])
+	} else {
+		reset()
+	}
+
+	resp, err := std.Send(pathURL, method)
+	goutil.PanicErr(err)
+	return resp
+}
+
 // GetDo sets the method to GET and sets the given pathURL, then send request and return response.
 func GetDo(pathURL string) (*Response, error) {
 	return reset().Send(pathURL, http.MethodGet)
@@ -39,7 +55,7 @@ func GetDo(pathURL string) (*Response, error) {
 
 // PostDo sets the method to POST and sets the given pathURL,
 // then send request and return http response.
-func PostDo(pathURL string, body ...interface{}) (*Response, error) {
+func PostDo(pathURL string, body ...any) (*Response, error) {
 	if len(body) > 0 {
 		std.Body(body[0])
 	} else {
@@ -51,7 +67,7 @@ func PostDo(pathURL string, body ...interface{}) (*Response, error) {
 
 // PutDo sets the method to PUT and sets the given pathURL,
 // then send request and return http response.
-func PutDo(pathURL string, body ...interface{}) (*Response, error) {
+func PutDo(pathURL string, body ...any) (*Response, error) {
 	if len(body) > 0 {
 		std.Body(body[0])
 	} else {
@@ -63,7 +79,7 @@ func PutDo(pathURL string, body ...interface{}) (*Response, error) {
 
 // PatchDo sets the method to PATCH and sets the given pathURL,
 // then send request and return http response.
-func PatchDo(pathURL string, body ...interface{}) (*Response, error) {
+func PatchDo(pathURL string, body ...any) (*Response, error) {
 	if len(body) > 0 {
 		std.Body(body[0])
 	} else {

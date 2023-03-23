@@ -20,7 +20,7 @@ func TestGetDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -39,7 +39,7 @@ func TestGetDo_with_QueryParams(t *testing.T) {
 	assert.True(t, resp.IsSuccessful())
 	assert.True(t, resp.IsJSONType())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -52,7 +52,7 @@ func TestPostDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -65,7 +65,7 @@ func TestPutDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -78,7 +78,7 @@ func TestPatchDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
@@ -91,7 +91,7 @@ func TestDeleteDo(t *testing.T) {
 	assert.True(t, resp.IsOK())
 	assert.True(t, resp.IsSuccessful())
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)

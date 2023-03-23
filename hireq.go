@@ -47,8 +47,8 @@ type HiReq struct {
 	// body provider
 	bodyProvider BodyProvider
 	respDecoder  RespDecoder
-	// beforeSend callback
-	beforeSend func(req *http.Request)
+	// BeforeSend callback
+	BeforeSend func(r *http.Request)
 }
 
 // New create
@@ -81,7 +81,7 @@ func (h *HiReq) New() *HiReq {
 		method:  h.method,
 		baseURL: h.baseURL,
 		header:  headerCopy,
-		// queryParams:    append([]interface{}{}, s.queryParams...),
+		// queryParams:    append([]any{}, s.queryParams...),
 		bodyProvider: h.bodyProvider,
 		respDecoder:  h.respDecoder,
 	}
@@ -120,9 +120,10 @@ func (h *HiReq) Config(fn func(doer httpreq.Doer)) *HiReq {
 // ConfigHClient custom config http client.
 //
 // Usage:
-// 	h.ConfigHClient(func(hClient *http.Client) {
+//
+//	h.ConfigHClient(func(hClient *http.Client) {
 //		hClient.Timeout = 30 * time.Second
-// 	})
+//	})
 func (h *HiReq) ConfigHClient(fn func(hClient *http.Client)) *HiReq {
 	if hc, ok := h.client.(*http.Client); ok {
 		fn(hc)
@@ -157,6 +158,12 @@ func (h *HiReq) Middlewares(middles ...Middleware) *HiReq {
 // WithRespDecoder for client
 func (h *HiReq) WithRespDecoder(respDecoder RespDecoder) *HiReq {
 	h.respDecoder = respDecoder
+	return h
+}
+
+// OnBeforeSend for client
+func (h *HiReq) OnBeforeSend(fn func(r *http.Request)) *HiReq {
+	h.BeforeSend = fn
 	return h
 }
 
@@ -285,14 +292,14 @@ func (h *HiReq) PathURL(pathURL string) *HiReq {
 }
 
 // QueryParam appends new k-v param to the query string.
-func (h *HiReq) QueryParam(key string, value interface{}) *HiReq {
+func (h *HiReq) QueryParam(key string, value any) *HiReq {
 	h.queryParams.Add(key, strutil.MustString(value))
 	return h
 }
 
 // QueryParams appends url.Values/map[string]string to the query string.
 // The value will be encoded as url query parameters on send requests (see Send()).
-func (h *HiReq) QueryParams(ps interface{}) *HiReq {
+func (h *HiReq) QueryParams(ps any) *HiReq {
 	if ps != nil {
 		queryValues := httpreq.ToQueryValues(ps)
 
@@ -357,6 +364,7 @@ func (h *HiReq) SetHeaders(headers http.Header) *HiReq {
 // ContentType with custom ContentType header
 //
 // Usage:
+//
 //	// json type
 //	h.ContentType(httpctype.JSON)
 //	// form type
@@ -418,6 +426,7 @@ func (h *HiReq) SetCookies(hcs ...*http.Cookie) *HiReq {
 // SetCookieString set cookie header value.
 //
 // Usage:
+//
 //	h.New().
 //		SetCookieString("name=inhere;age=30").
 //		GetDo("/some/api")
@@ -428,8 +437,13 @@ func (h *HiReq) SetCookieString(value string) *HiReq {
 
 // ----------- Request Body ------------
 
-// Body with custom body
-func (h *HiReq) Body(body interface{}) *HiReq {
+// Body with custom any type body
+func (h *HiReq) Body(body any) *HiReq {
+	return h.AnyBody(body)
+}
+
+// AnyBody with custom any type body
+func (h *HiReq) AnyBody(body any) *HiReq {
 	switch typVal := body.(type) {
 	case io.Reader:
 		h.BodyReader(typVal)
@@ -458,17 +472,16 @@ func (h *HiReq) BodyProvider(bp BodyProvider) *HiReq {
 }
 
 // FileContentsBody read file contents as body
-func (h *HiReq) FileContentsBody(filepath string) *HiReq {
-	file, err := os.OpenFile(filepath, os.O_RDONLY, fsutil.DefaultFilePerm)
+func (h *HiReq) FileContentsBody(filePath string) *HiReq {
+	file, err := os.OpenFile(filePath, os.O_RDONLY, fsutil.DefaultFilePerm)
 	if err != nil {
 		panic(err)
 	}
-
 	return h.BodyReader(file)
 }
 
 // JSONBody with JSON data body
-func (h *HiReq) JSONBody(jsonData interface{}) *HiReq {
+func (h *HiReq) JSONBody(jsonData any) *HiReq {
 	h.bodyProvider = jsonBodyProvider{
 		payload: jsonData,
 	}
@@ -476,7 +489,7 @@ func (h *HiReq) JSONBody(jsonData interface{}) *HiReq {
 }
 
 // FormBody with form data body
-func (h *HiReq) FormBody(formData interface{}) *HiReq {
+func (h *HiReq) FormBody(formData any) *HiReq {
 	h.bodyProvider = formBodyProvider{
 		payload: formData,
 	}
@@ -541,6 +554,15 @@ func (h *HiReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Res
 	return h.SendWithCtx(ctx, pathURLAndMethod...)
 }
 
+// ReqOption type
+type ReqOption = httpreq.ReqOption
+
+// SendWithOpt request with context, then return response
+func (h *HiReq) SendWithOpt(pathURL string, opt *ReqOption) (*Response, error) {
+	opt = ensureOpt(opt)
+	return h.SendWithCtx(opt.Context, pathURL, opt.Method)
+}
+
 // SendWithCtx request with context, then return response
 func (h *HiReq) SendWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
 	req, err := h.NewRequestWithCtx(ctx, pathURLAndMethod...)
@@ -555,8 +577,8 @@ func (h *HiReq) SendWithCtx(ctx context.Context, pathURLAndMethod ...string) (*R
 // SendRequest send request
 func (h *HiReq) SendRequest(req *http.Request) (*Response, error) {
 	// call before send.
-	if h.beforeSend != nil {
-		h.beforeSend(req)
+	if h.BeforeSend != nil {
+		h.BeforeSend(req)
 	}
 
 	// wrap middlewares
@@ -583,7 +605,7 @@ func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...strin
 	pathURL := h.pathURL
 	if ln := len(pathURLAndMethod); ln > 0 {
 		pathURL = pathURLAndMethod[0]
-		if ln > 1 {
+		if ln > 1 && len(pathURLAndMethod[1]) > 0 {
 			h.method = pathURLAndMethod[1]
 		}
 	}
@@ -625,7 +647,7 @@ func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...strin
 	}
 
 	// copy headers
-	httpreq.AddHeadersToRequest(req, h.header)
+	httpreq.AddHeaders(req, h.header)
 
 	// reset after request build.
 	h.pathURL = ""
