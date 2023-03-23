@@ -47,7 +47,7 @@ func main() {
 		panic(err)
 	}
 
-	ret := make(map[string]interface{})
+	ret := make(map[string]any)
 	err = resp.Decode(&ret)
 	if err != nil {
 		panic(err)
@@ -161,7 +161,7 @@ MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 ### Get response data
 
 - `Response.ContentType() string`
-- `Response.Decode(ptr interface{}) error`
+- `Response.Decode(ptr any) error`
 
 ### Request to string
 

@@ -44,7 +44,7 @@ func main() {
 		panic(err)
 	}
 
-	retMp := make(map[string]interface{})
+	retMp := make(map[string]any)
 	err = resp.Decode(&retMp)
 	if err != nil {
 		panic(err)
