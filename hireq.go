@@ -549,18 +549,35 @@ func (h *HiReq) SendRaw(raw string) (*Response, error) {
 	return h.SendRequest(req)
 }
 
-// DoWithCtx request with context, then return response
-func (h *HiReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
-	return h.SendWithCtx(ctx, pathURLAndMethod...)
-}
-
 // ReqOption type
 type ReqOption = httpreq.ReqOption
 
-// SendWithOpt request with context, then return response
+// SendWithOpt send request with option, then return response
 func (h *HiReq) SendWithOpt(pathURL string, opt *ReqOption) (*Response, error) {
+	// ensure option
 	opt = ensureOpt(opt)
-	return h.SendWithCtx(opt.Context, pathURL, opt.Method)
+
+	// build request
+	req, err := h.NewRequestWithCtx(opt.Context, pathURL, opt.Method)
+	if err != nil {
+		return nil, err
+	}
+
+	// set headers
+	if len(opt.HeaderMap) > 0 {
+		httpreq.AddHeaderMap(req, opt.HeaderMap)
+	}
+	if len(opt.ContentType) > 0 {
+		req.Header.Set("Content-Type", opt.ContentType)
+	}
+
+	// do send
+	return h.SendRequest(req)
+}
+
+// DoWithCtx request with context, then return response
+func (h *HiReq) DoWithCtx(ctx context.Context, pathURLAndMethod ...string) (*Response, error) {
+	return h.SendWithCtx(ctx, pathURLAndMethod...)
 }
 
 // SendWithCtx request with context, then return response
@@ -602,11 +619,12 @@ func (h *HiReq) NewRequest(pathURLAndMethod ...string) (*http.Request, error) {
 
 // NewRequestWithCtx build new request with context
 func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...string) (*http.Request, error) {
+	method := h.method
 	pathURL := h.pathURL
 	if ln := len(pathURLAndMethod); ln > 0 {
 		pathURL = pathURLAndMethod[0]
 		if ln > 1 && len(pathURLAndMethod[1]) > 0 {
-			h.method = pathURLAndMethod[1]
+			method = pathURLAndMethod[1]
 		}
 	}
 
@@ -623,9 +641,12 @@ func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...strin
 	if err != nil {
 		return nil, err
 	}
+	if reqURL.Scheme == "" {
+		reqURL.Scheme = "https"
+	}
 
 	// append query params
-	if err = appendQueryParams(reqURL, h.queryParams); err != nil {
+	if err = httpreq.AppendQueryToURL(reqURL, h.queryParams); err != nil {
 		return nil, err
 	}
 
@@ -641,7 +662,7 @@ func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...strin
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, h.method, reqURL.String(), body)
+	req, err := http.NewRequestWithContext(ctx, method, reqURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -656,52 +677,9 @@ func (h *HiReq) NewRequestWithCtx(ctx context.Context, pathURLAndMethod ...strin
 
 // String request to string.
 func (h *HiReq) String() string {
-	return ToString(h.Build())
-}
-
-func appendQueryParams(reqURL *url.URL, uv url.Values) error {
-	urlValues, err := url.ParseQuery(reqURL.RawQuery)
-	if err != nil {
-		return err
-	}
-
-	for key, values := range uv {
-		for _, value := range values {
-			urlValues.Add(key, value)
-		}
-	}
-
-	// url.Values format to a sorted "url encoded" string.
-	// e.g. "key=val&foo=bar"
-	reqURL.RawQuery = urlValues.Encode()
-	return nil
-}
-
-// ToString convert http Request to string
-func ToString(r *http.Request, err error) string {
+	r, err := h.Build()
 	if err != nil {
 		return ""
 	}
-
-	buf := &bytes.Buffer{}
-	buf.WriteString(r.Method)
-	buf.WriteByte(' ')
-	buf.WriteString(r.URL.String())
-	buf.WriteByte(' ')
-	buf.WriteString(r.Proto)
-	buf.WriteByte('\n')
-
-	for key, values := range r.Header {
-		buf.WriteString(key)
-		buf.WriteString(": ")
-		buf.WriteString(strings.Join(values, ";"))
-		buf.WriteByte('\n')
-	}
-
-	if r.Body != nil {
-		buf.WriteByte('\n')
-		_, _ = buf.ReadFrom(r.Body)
-	}
-
-	return buf.String()
+	return httpreq.RequestToString(r)
 }

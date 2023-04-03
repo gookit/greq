@@ -46,8 +46,8 @@ func (r *Response) ContentType() string {
 //
 // Usage:
 //
-//		resp, err := greq.Post("some.host/path")
-//	 ok := resp.IsContentType("application/xml")
+//	resp, err := greq.Post("some.host/path")
+//	ok := resp.IsContentType("application/xml")
 func (r *Response) IsContentType(prefix string) bool {
 	val := r.Header.Get(httpctype.Key)
 	return val != "" && strings.HasPrefix(val, prefix)
@@ -85,7 +85,6 @@ func (r *Response) BodyBuffer() *bytes.Buffer {
 	if err != nil {
 		panic(err)
 	}
-
 	return buf
 }
 
