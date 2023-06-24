@@ -96,14 +96,29 @@ func ensureOpt(opt *Options) *Options {
 	return opt
 }
 
+//
+// ----------- built in OptionFn ------------
+//
+
 // WithMethod set method
-func (opt *Options) WithMethod(method string) *Options {
-	if method != "" {
-		opt.Method = method
+func WithMethod(method string) OptionFn {
+	return func(opt *Options) {
+		if method != "" {
+			opt.Method = method
+		}
 	}
-	return opt
 }
 
-//
-// ----------- Build Request ------------
-//
+// WithContentType set content-type
+func WithContentType(contentType string) OptionFn {
+	return func(opt *Options) {
+		opt.ContentType = contentType
+	}
+}
+
+// WithUserAgent set user-agent header
+func WithUserAgent(userAgent string) OptionFn {
+	return func(opt *Options) {
+		opt.Header.Set("User-Agent", userAgent)
+	}
+}

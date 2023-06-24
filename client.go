@@ -7,7 +7,6 @@ import (
 	gourl "net/url"
 	"strings"
 
-	"github.com/gookit/goutil/basefn"
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpheader"
 	"github.com/gookit/goutil/netutil/httpreq"
@@ -218,6 +217,11 @@ func (h *Client) DefaultMethod(method string) *Client {
 	return h
 }
 
+// Builder create a new builder with current client.
+func (h *Client) Builder(optFns ...OptionFn) *Builder {
+	return BuilderWithClient(h, optFns...)
+}
+
 //
 // ------------ REST requests ------------
 //
@@ -229,9 +233,8 @@ func (h *Client) Head(pathURL string) *Builder {
 
 // HeadDo sets the method to HEAD and request the pathURL,
 // then send request and return response.
-func (h *Client) HeadDo(pathURL string, withOpt ...*Options) (*Response, error) {
-	opt := basefn.FirstOr(withOpt, &Options{})
-	return h.SendWithOpt(pathURL, opt.WithMethod(http.MethodHead))
+func (h *Client) HeadDo(pathURL string, optFns ...OptionFn) (*Response, error) {
+	return h.SendWithOpt(pathURL, NewOpt2(optFns, http.MethodHead))
 }
 
 // Get sets the method to GET and sets the given pathURL
@@ -290,6 +293,11 @@ func (h *Client) DeleteDo(pathURL string, optFns ...OptionFn) (*Response, error)
 }
 
 // ----------- URL, Query params ------------
+
+// WithContentType with custom Content-Type header
+func (h *Client) WithContentType(value string) *Builder {
+	return BuilderWithClient(h).WithContentType(value)
+}
 
 // JSONType with json Content-Type header
 func (h *Client) JSONType() *Builder {
@@ -350,9 +358,7 @@ func (h *Client) BodyReader(r io.Reader) *Builder {
 
 // BodyProvider with custom body provider
 func (h *Client) BodyProvider(bp BodyProvider) *Builder {
-	b := BuilderWithClient(h)
-	b.Provider = bp
-	return b
+	return BuilderWithClient(h).BodyProvider(bp)
 }
 
 // ----------- Do send request ------------

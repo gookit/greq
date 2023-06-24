@@ -45,8 +45,8 @@ func NewBuilder(fns ...OptionFn) *Builder {
 }
 
 // BuilderWithClient create a new builder with client
-func BuilderWithClient(c *Client) *Builder {
-	return NewBuilder().WithClient(c)
+func BuilderWithClient(c *Client, optFns ...OptionFn) *Builder {
+	return NewBuilder(optFns...).WithClient(c)
 }
 
 func newBuilder(c *Client, method, pathURL string) *Builder {
@@ -104,9 +104,7 @@ func (b *Builder) AddQuery(key string, value any) *Builder {
 // The value will be encoded as url Query parameters on send requests (see Send()).
 func (b *Builder) QueryParams(ps any) *Builder {
 	if ps != nil {
-		queryValues := httpreq.ToQueryValues(ps)
-
-		for key, values := range queryValues {
+		for key, values := range httpreq.ToQueryValues(ps) {
 			for _, value := range values {
 				b.Query.Add(key, value)
 			}
@@ -120,6 +118,11 @@ func (b *Builder) QueryParams(ps any) *Builder {
 // The value will be encoded as url Query parameters on new requests (see Send()).
 func (b *Builder) QueryValues(values gourl.Values) *Builder {
 	return b.QueryParams(values)
+}
+
+// WithQuerySMap appends map[string]string to the Query string.
+func (b *Builder) WithQuerySMap(smp map[string]string) *Builder {
+	return b.QueryParams(smp)
 }
 
 //

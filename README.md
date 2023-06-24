@@ -7,6 +7,8 @@
 [![Unit-Tests](https://github.com/gookit/greq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/greq/actions)
 [![Coverage Status](https://coveralls.io/repos/github/gookit/greq/badge.svg?branch=main)](https://coveralls.io/github/gookit/greq?branch=main)
 
+> [中文说明](README.zh-CN.md) | [English](README.md)
+
 **greq** A simple http client request builder and sender
 
 ## Features
