@@ -13,7 +13,7 @@ import (
 // Response is a http.Response wrapper
 type Response struct {
 	*http.Response
-	// decoder for response, default will extends from HiReq.respDecoder
+	// decoder for response, default will extends from Client.respDecoder
 	decoder RespDecoder
 }
 

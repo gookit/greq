@@ -10,11 +10,10 @@ import (
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpreq"
+	"github.com/gookit/goutil/testutil"
 	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
 )
-
-var testBaseURL = "https://httpbin.org"
 
 var testDoer = httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
 	tw := httptest.NewRecorder()
@@ -33,6 +32,22 @@ var testDoer = httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) 
 	return tw.Result(), err
 })
 
+var testBaseURL string
+
+func TestMain(m *testing.M) {
+	// create server
+	s := testutil.NewEchoServer()
+	defer s.Close()
+	testBaseURL = "http://" + s.Listener.Addr().String()
+	fmt.Println("Test server listen on:", testBaseURL)
+
+	// with base url
+	greq.BaseURL(testBaseURL)
+
+	// do something
+	m.Run()
+}
+
 func TestHReq_Doer(t *testing.T) {
 	buf := &bytes.Buffer{}
 
@@ -46,8 +61,9 @@ func TestHReq_Doer(t *testing.T) {
 	resp, err := greq.New(testBaseURL).
 		Doer(testDoer).
 		Use(mid0).
-		UserAgent("custom-client/1.0").
-		Do("/get", "GET")
+		UserAgent("custom-cli/1.0").
+		Get("/get").
+		Do()
 
 	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
@@ -59,8 +75,8 @@ func TestHReq_Doer(t *testing.T) {
 
 func TestHReq_Send(t *testing.T) {
 	resp, err := greq.New(testBaseURL).
-		UserAgent("custom-client/1.0").
-		Send("/get")
+		UserAgent("custom-cli/1.0").
+		Send("GET", "/get")
 
 	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
@@ -75,7 +91,7 @@ func TestHReq_Send(t *testing.T) {
 
 	headers := retMp["headers"].(map[string]any)
 	assert.Contains(t, headers, "User-Agent")
-	assert.Eq(t, "custom-client/1.0", headers["User-Agent"])
+	assert.Eq(t, "custom-cli/1.0", headers["User-Agent"])
 }
 
 func TestHReq_GetDo(t *testing.T) {
@@ -95,8 +111,9 @@ func TestHReq_GetDo(t *testing.T) {
 
 func TestHReq_PostDo(t *testing.T) {
 	resp, err := greq.New(testBaseURL).
+		UserAgent(greq.AgentCURL).
 		JSONType().
-		PostDo("/post")
+		PostDo("/post", `{"name": "inhere"}`)
 
 	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
@@ -110,11 +127,11 @@ func TestHReq_PostDo(t *testing.T) {
 
 func TestHReq_String(t *testing.T) {
 	str := greq.New(testBaseURL).
-		UserAgent("some-client/1.0").
+		UserAgent("some-cli/1.0").
 		BasicAuth("inhere", "some string").
 		JSONType().
-		Body("hi, with body").
-		Post("/post").
+		StringBody("hi, with body").
+		Post("/post", `{"name": "inhere"}`).
 		String()
 
 	fmt.Println(str)

@@ -2,7 +2,7 @@ package greq
 
 import "net/http"
 
-// Middleware interface for client request.
+// Middleware interface for cli request.
 type Middleware interface {
 	Handle(r *http.Request, next HandleFunc) (*Response, error)
 }
@@ -15,9 +15,9 @@ func (mf MiddleFunc) Handle(r *http.Request, next HandleFunc) (*Response, error)
 	return mf(r, next)
 }
 
-func (h *HiReq) wrapMiddlewares() {
+func (h *Client) wrapMiddlewares() {
 	h.handler = func(r *http.Request) (*Response, error) {
-		rawResp, err := h.client.Do(r)
+		rawResp, err := h.doer.Do(r)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func (h *HiReq) wrapMiddlewares() {
 	}
 }
 
-func (h *HiReq) wrapMiddleware(m Middleware) {
+func (h *Client) wrapMiddleware(m Middleware) {
 	next := h.handler
 
 	// wrap handler

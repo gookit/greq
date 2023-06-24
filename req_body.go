@@ -81,6 +81,5 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 	if str, ok := p.payload.(string); ok {
 		return strings.NewReader(str), nil
 	}
-
-	return nil, errors.New("invalid payload data for form body")
+	return nil, errors.New("invalid payload data for Form body")
 }

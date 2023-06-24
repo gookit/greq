@@ -1,4 +1,4 @@
-# HReq
+# Greq
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/greq?style=flat-square)
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/greq)](https://github.com/gookit/goutil)
@@ -7,9 +7,7 @@
 [![Unit-Tests](https://github.com/gookit/greq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/greq/actions)
 [![Coverage Status](https://coveralls.io/repos/github/gookit/greq/badge.svg?branch=main)](https://coveralls.io/github/gookit/greq?branch=main)
 
-**HReq** A simple http client request builder and sender
-
-> `greq` inspired from https://github.com/dghubble/sling and more projects, please see refers.
+**greq** A simple http client request builder and sender
 
 ## 功能说明
 

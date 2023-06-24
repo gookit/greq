@@ -10,7 +10,7 @@ import (
 
 func TestResponse_String(t *testing.T) {
 	resp, err := greq.New(testBaseURL).
-		UserAgent("custom-client/1.0").
+		UserAgent("custom-cli/1.0").
 		GetDo("/get")
 
 	assert.NoErr(t, err)
