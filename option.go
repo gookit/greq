@@ -27,7 +27,7 @@ type Options struct {
 	Query  gourl.Values
 	QueryM map[string]any
 
-	// Data for request, will be encoded to query string or req body.
+	// Data for request. Will be encoded to query string or request body.
 	//
 	// type allow: string, []byte, io.Reader, io.ReadCloser, url.Values, map[string]string
 	Data any

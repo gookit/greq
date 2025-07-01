@@ -472,7 +472,7 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	}
 
 	// append Query params
-	qm := MergeURLValues(h.query, opt.Query)
+	qm := httpreq.MergeURLValues(h.query, opt.Query)
 	if len(qm) > 0 {
 		fullURL = httpreq.AppendQueryToURLString(fullURL, qm)
 	}
@@ -510,9 +510,9 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	}
 
 	// copy and set headers
-	SetHeaders(req, h.header, opt.Header)
+	httpreq.SetHeaders(req, h.header, opt.Header)
 	if len(opt.HeaderM) > 0 {
-		SetHeaderMap(req, opt.HeaderM)
+		httpreq.SetHeaderMap(req, opt.HeaderM)
 	}
 	if len(cType) > 0 {
 		req.Header.Set(httpheader.ContentType, cType)

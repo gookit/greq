@@ -2,7 +2,7 @@
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/greq?style=flat-square)
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/greq)](https://github.com/gookit/goutil)
-[![GoDoc](https://godoc.org/github.com/gookit/greq?status.svg)](https://pkg.go.dev/github.com/gookit/greq)
+[![GoDoc](https://pkg.go.dev/badge/github.com/gookit/greq.svg)](https://pkg.go.dev/github.com/gookit/greq)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gookit/greq)](https://goreportcard.com/report/github.com/gookit/greq)
 [![Unit-Tests](https://github.com/gookit/greq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/greq/actions)
 [![Coverage Status](https://coveralls.io/repos/github/gookit/greq/badge.svg?branch=main)](https://coveralls.io/github/gookit/greq?branch=main)

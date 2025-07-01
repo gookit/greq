@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gookit/goutil/basefn"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpheader"
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/strutil"
+	"github.com/gookit/goutil/x/basefn"
 )
 
 const (
