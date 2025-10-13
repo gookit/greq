@@ -35,11 +35,11 @@ var testDoer = httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) 
 var testBaseURL string
 
 func TestMain(m *testing.M) {
-	// create server
+	// create mock server
 	s := testutil.NewEchoServer()
 	defer s.Close()
-	testBaseURL = "http://" + s.Listener.Addr().String()
-	fmt.Println("Test server listen on:", testBaseURL)
+	testBaseURL = s.HTTPHost()
+	s.PrintHttpHost()
 
 	// with base url
 	greq.BaseURL(testBaseURL)
