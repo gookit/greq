@@ -80,7 +80,9 @@ func (h *Client) Sub() *Client {
 	}
 }
 
-// ------------ Config ------------
+//
+// region Config
+// ----------------------------
 
 // Doer custom set http request doer.
 // If a nil cli is given, the DefaultDoer will be used.
@@ -94,14 +96,10 @@ func (h *Client) Doer(doer httpreq.Doer) *Client {
 }
 
 // Client custom set http request doer
-func (h *Client) Client(doer httpreq.Doer) *Client {
-	return h.Doer(doer)
-}
+func (h *Client) Client(doer httpreq.Doer) *Client { return h.Doer(doer) }
 
 // HttpClient custom set http cli as request doer
-func (h *Client) HttpClient(hClient *http.Client) *Client {
-	return h.Doer(hClient)
-}
+func (h *Client) HttpClient(hClient *http.Client) *Client { return h.Doer(hClient) }
 
 // Config custom config http request doer
 func (h *Client) Config(fn func(doer httpreq.Doer)) *Client {
@@ -127,19 +125,13 @@ func (h *Client) ConfigHClient(fn func(hClient *http.Client)) *Client {
 }
 
 // Use one or multi middlewares
-func (h *Client) Use(middles ...Middleware) *Client {
-	return h.Middlewares(middles...)
-}
+func (h *Client) Use(middles ...Middleware) *Client { return h.Middlewares(middles...) }
 
 // Uses one or multi middlewares
-func (h *Client) Uses(middles ...Middleware) *Client {
-	return h.Middlewares(middles...)
-}
+func (h *Client) Uses(middles ...Middleware) *Client { return h.Middlewares(middles...) }
 
 // Middleware add one or multi middlewares
-func (h *Client) Middleware(middles ...Middleware) *Client {
-	return h.Middlewares(middles...)
-}
+func (h *Client) Middleware(middles ...Middleware) *Client { return h.Middlewares(middles...) }
 
 // Middlewares add one or multi middlewares
 func (h *Client) Middlewares(middles ...Middleware) *Client {
@@ -213,23 +205,20 @@ func (h *Client) BaseURL(baseURL string) *Client {
 
 // DefaultMethod set default method name. it will be used when the Get()/Post() method is empty.
 func (h *Client) DefaultMethod(method string) *Client {
-	h.method = method
+	h.method = strings.ToUpper(method)
 	return h
 }
 
 // Builder create a new builder with current client.
-func (h *Client) Builder(optFns ...OptionFn) *Builder {
-	return BuilderWithClient(h, optFns...)
-}
+func (h *Client) Builder(optFns ...OptionFn) *Builder { return BuilderWithClient(h, optFns...) }
 
 //
-// ------------ REST requests ------------
+// region REST Methods
+// ------------------------------
 //
 
 // Head sets the method to HEAD and request the pathURL, then send request and return response.
-func (h *Client) Head(pathURL string) *Builder {
-	return newBuilder(h, http.MethodHead, pathURL)
-}
+func (h *Client) Head(pathURL string) *Builder { return newBuilder(h, http.MethodHead, pathURL) }
 
 // HeadDo sets the method to HEAD and request the pathURL,
 // then send request and return response.
@@ -238,9 +227,7 @@ func (h *Client) HeadDo(pathURL string, optFns ...OptionFn) (*Response, error) {
 }
 
 // Get sets the method to GET and sets the given pathURL
-func (h *Client) Get(pathURL string) *Builder {
-	return newBuilder(h, http.MethodGet, pathURL)
-}
+func (h *Client) Get(pathURL string) *Builder { return newBuilder(h, http.MethodGet, pathURL) }
 
 // GetDo sets the method to GET and sets the given pathURL,
 // then send request and return response.
@@ -292,7 +279,9 @@ func (h *Client) DeleteDo(pathURL string, optFns ...OptionFn) (*Response, error)
 	return h.SendWithOpt(pathURL, NewOpt2(optFns, http.MethodDelete))
 }
 
-// ----------- URL, Query params ------------
+//
+// region Headers
+// ----------------------------
 
 // WithContentType with custom Content-Type header
 func (h *Client) WithContentType(value string) *Builder {
@@ -300,24 +289,16 @@ func (h *Client) WithContentType(value string) *Builder {
 }
 
 // JSONType with json Content-Type header
-func (h *Client) JSONType() *Builder {
-	return BuilderWithClient(h).JSONType()
-}
+func (h *Client) JSONType() *Builder { return BuilderWithClient(h).JSONType() }
 
 // FormType with from Content-Type header
-func (h *Client) FormType() *Builder {
-	return BuilderWithClient(h).FormType()
-}
+func (h *Client) FormType() *Builder { return BuilderWithClient(h).FormType() }
 
 // UserAgent with User-Agent header setting for all requests.
-func (h *Client) UserAgent(value string) *Builder {
-	return BuilderWithClient(h).UserAgent(value)
-}
+func (h *Client) UserAgent(value string) *Builder { return BuilderWithClient(h).UserAgent(value) }
 
 // UserAuth with user auth header value for all requests.
-func (h *Client) UserAuth(value string) *Builder {
-	return BuilderWithClient(h).UserAuth(value)
-}
+func (h *Client) UserAuth(value string) *Builder { return BuilderWithClient(h).UserAuth(value) }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password.
@@ -328,10 +309,8 @@ func (h *Client) BasicAuth(username, password string) *Builder {
 }
 
 //
-//
-// ----------- URL, Query params ------------
-//
-//
+// region URL and Query
+// ---------------------------
 
 // QueryParams appends url.Values/map[string]string to the Query string.
 // The value will be encoded as url Query parameters on send requests (see Send()).
@@ -339,7 +318,9 @@ func (h *Client) QueryParams(ps any) *Builder {
 	return BuilderWithClient(h).QueryParams(ps)
 }
 
-// ----------- Request Body ------------
+//
+// region Set Body
+// -----------------------------
 
 // Body with custom any type body
 func (h *Client) Body(body any) *Builder {
@@ -361,7 +342,9 @@ func (h *Client) BodyProvider(bp BodyProvider) *Builder {
 	return BuilderWithClient(h).BodyProvider(bp)
 }
 
-// ----------- Do send request ------------
+//
+// region Send request
+// ------------------------------
 
 // Do send request and return response
 func (h *Client) Do(method, url string, optFns ...OptionFn) (*Response, error) {
@@ -382,7 +365,7 @@ func (h *Client) MustSend(method, url string, optFns ...OptionFn) *Response {
 	return resp
 }
 
-// SendRaw http request text.
+// SendRaw http request text. like IDE .http file contents
 //
 // Format:
 //
@@ -446,17 +429,17 @@ func (h *Client) SendRequest(req *http.Request) (*Response, error) {
 	return resp, err
 }
 
-// ----------- Build request ------------
+//
+// region Build request
+// -----------------------------------
 
 // NewRequest build new request
 func (h *Client) NewRequest(method, url string, optFns ...OptionFn) (*http.Request, error) {
 	return h.NewRequestWithOptions(url, NewOpt2(optFns, method))
 }
 
-// NewRequestWithOptions build new request with Options
-func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request, error) {
+func (h *Client) buildFullURL(url string) string {
 	fullURL := url
-
 	if len(h.baseURL) > 0 {
 		if !strings.HasPrefix(url, "http") {
 			fullURL = h.baseURL + url
@@ -464,6 +447,12 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 			fullURL = h.baseURL
 		}
 	}
+	return fullURL
+}
+
+// NewRequestWithOptions build new request with Options
+func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request, error) {
+	fullURL := h.buildFullURL(url)
 
 	opt = orCreate(opt)
 	ctx := opt.Context
@@ -485,25 +474,31 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 		if err != nil {
 			return nil, err
 		}
-
 		if bpTyp := opt.Provider.ContentType(); bpTyp != "" {
 			opt.ContentType = bpTyp
 		}
 	}
 
-	cType := strutil.OrElse(opt.ContentType, h.ContentType)
+	cType := strutil.Valid(opt.ContentType, opt.HeaderM[httpctype.Key], h.ContentType)
 	method := strings.ToUpper(strutil.OrElse(opt.Method, h.method))
+	allowBody := httpreq.IsNoBodyMethod(method) == false
 
+	// check opt.Data
 	if opt.Data != nil {
-		if httpreq.IsNoBodyMethod(method) {
+		if !allowBody {
 			body = nil
 			fullURL = httpreq.AppendQueryToURLString(fullURL, httpreq.MakeQuery(opt.Data))
 		} else if body == nil {
-			cType := strutil.OrElse(opt.HeaderM[httpctype.Key], cType)
 			body = httpreq.MakeBody(opt.Data, cType)
 		}
 	}
 
+	// check opt.Body
+	if allowBody && body == nil && opt.Body != nil {
+		body = httpreq.MakeBody(opt.Data, cType)
+	}
+
+	// create request
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, err

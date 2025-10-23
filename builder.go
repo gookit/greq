@@ -23,7 +23,7 @@ const (
 	AgentCURL = "CURL/7.64.1 greq/1.0.2"
 )
 
-// Builder is a http request builder.
+// Builder is an http request builder.
 type Builder struct {
 	*Options
 	// client for send request. if not set, will use default client.
@@ -64,9 +64,7 @@ func (b *Builder) WithClient(c *Client) *Builder {
 }
 
 // WithOptionFn set option fns to builder
-func (b *Builder) WithOptionFn(fns ...OptionFn) *Builder {
-	return b.WithOptionFns(fns)
-}
+func (b *Builder) WithOptionFn(fns ...OptionFn) *Builder { return b.WithOptionFns(fns) }
 
 // WithOptionFns set option fns to builder
 func (b *Builder) WithOptionFns(fns []OptionFn) *Builder {
@@ -116,9 +114,7 @@ func (b *Builder) QueryParams(ps any) *Builder {
 
 // QueryValues appends url.Values to the Query string.
 // The value will be encoded as url Query parameters on new requests (see Send()).
-func (b *Builder) QueryValues(values gourl.Values) *Builder {
-	return b.QueryParams(values)
-}
+func (b *Builder) QueryValues(values gourl.Values) *Builder { return b.QueryParams(values) }
 
 // WithQuerySMap appends map[string]string to the Query string.
 func (b *Builder) WithQuerySMap(smp map[string]string) *Builder {
@@ -196,9 +192,7 @@ func (b *Builder) UserAgent(ua string) *Builder {
 }
 
 // UserAuth with user auth header value.
-func (b *Builder) UserAuth(value string) *Builder {
-	return b.SetHeader(httpheader.UserAuth, value)
-}
+func (b *Builder) UserAuth(value string) *Builder { return b.SetHeader(httpheader.UserAuth, value) }
 
 // BasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password.
@@ -340,14 +334,10 @@ func (b *Builder) FormBody(formData any) *Builder {
 }
 
 // BytesBody with custom string body
-func (b *Builder) BytesBody(bs []byte) *Builder {
-	return b.BodyReader(bytes.NewReader(bs))
-}
+func (b *Builder) BytesBody(bs []byte) *Builder { return b.BodyReader(bytes.NewReader(bs)) }
 
 // StringBody with custom string body
-func (b *Builder) StringBody(s string) *Builder {
-	return b.BodyReader(strings.NewReader(s))
-}
+func (b *Builder) StringBody(s string) *Builder { return b.BodyReader(strings.NewReader(s)) }
 
 // Multipart with custom multipart body
 func (b *Builder) Multipart(key, value string) *Builder {
