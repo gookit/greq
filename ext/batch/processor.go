@@ -136,9 +136,9 @@ func (bp *Processor) worker(wg *sync.WaitGroup, jobs <-chan *Request) {
 }
 
 // ExecuteAll executes all requests and waits for all to complete
-func (bp *Processor) ExecuteAll() []*Result {
+func (bp *Processor) ExecuteAll() Results {
 	if len(bp.requests) == 0 {
-		return []*Result{}
+		return nil
 	}
 
 	// Create timeout context if timeout is set
@@ -177,14 +177,14 @@ func (bp *Processor) ExecuteAll() []*Result {
 	}()
 
 	// Collect results
-	results := make([]*Result, 0, len(bp.requests))
+	results := make(Results, len(bp.requests))
 	completed := 0
 	total := len(bp.requests)
 
 	for completed < total {
 		select {
 		case result := <-bp.results:
-			results = append(results, result)
+			results[result.ID] = result
 			completed++
 		case <-ctx.Done():
 			// Context cancelled, return what we have so far
