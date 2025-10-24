@@ -1,4 +1,4 @@
-package ext
+package bench
 
 import (
 	"context"
@@ -19,8 +19,8 @@ type HTTPBench struct {
 	Method   string
 	Headers  map[string]string
 	Body     []byte
-	Timeout  time.Duration
-	QPSLimit int
+	Timeout  time.Duration // 每个请求的超时时间
+	QPSLimit int           // QPS限制 (0表示不限制)
 
 	// 测试参数
 	Number      int           // 总请求数

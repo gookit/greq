@@ -10,7 +10,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/timex"
 	"github.com/gookit/goutil/x/ccolor"
-	"github.com/gookit/greq/ext"
+	"github.com/gookit/greq/ext/bench"
 )
 
 var benchOpts = struct {
@@ -24,6 +24,7 @@ var benchOpts = struct {
 	timeout int // Timeout for each request
 	output string
 	headers cflag.KVString
+	json bool
 	method string
 }{
 	headers: cflag.KVString{Sep: ":"},
@@ -34,7 +35,7 @@ var benchOpts = struct {
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
 		c.Desc = "Benchmark HTTP requests, like ab"
-		c.Version = "v1.0.0"
+		c.Version = "1.0.0"
 	})
 
 	// add options
@@ -49,12 +50,25 @@ Example:
 Allow use <green>@filename</> to read data from file.
 	;;d`)
 	cmd.IntVar(&benchOpts.qpsLimit,  "qps", 0, "rate limit for all, in queries per second (QPS);;q")
-	cmd.StringVar(&benchOpts.output,  "output", "stdout", "Output file to write the results to. If not specified, results are written to stdout.;;o")
+	cmd.StringVar(&benchOpts.output,  "output", "stdout", `Output file to write the results to.
+If not specified, results are written to stdout.;;o`)
 	cmd.Var(&benchOpts.headers,  "header", `Custom HTTP header. Examples: -H "foo: bar";;H`)
 	cmd.IntVar(&benchOpts.timeout,  "timeout", 0, "Timeout for each request. Default to infinite.;;t")
 	cmd.StringVar(&benchOpts.method,  "method", "GET", "HTTP method;;m")
+	cmd.BoolVar(&benchOpts.json,  "json", false, "Quick add Content-Type: application/json header.")
 
 	cmd.AddArg("url", "the URL to benchmark test", true, nil)
+
+	cmd.Example = `
+  # Simple benchmark test
+  gbench -n 1000 -c 10 https://www.example.com
+
+  # With header
+  gbench -n 1000 -c 10  -H "Authorization: Bearer token" https://www.example.com
+
+  # POST request with JSON data
+  gbench -n 1000 -c 10 -m POST -d '{"key":"value"}' https://www.example.com
+	`
 
 	cmd.Func = func(c *cflag.CFlags) error {
 		return runBenchmark(c)
@@ -95,9 +109,14 @@ func runBenchmark(c *cflag.CFlags) error {
 		headers[k] = v
 	}
 
+	// 如果指定了 JSON 数据，快速添加 Content-Type 头
+	if benchOpts.json && benchOpts.method != "GET" {
+		headers["Content-Type"] = "application/json"
+	}
+
 	// 创建基准测试
-	bench := ext.NewHTTPBench(url)
-	bench.SetMethod(benchOpts.method).
+	hb := bench.NewHTTPBench(url)
+	hb.SetMethod(benchOpts.method).
 		SetConcurrency(benchOpts.concurrency).
 		SetNumber(benchOpts.number).
 		SetDuration(duration).
@@ -105,11 +124,11 @@ func runBenchmark(c *cflag.CFlags) error {
 		SetBody(bodyData)
 
 	if benchOpts.timeout > 0 {
-		bench.SetTimeout(time.Duration(benchOpts.timeout) * time.Second)
+		hb.SetTimeout(time.Duration(benchOpts.timeout) * time.Second)
 	}
 
 	if benchOpts.qpsLimit > 0 {
-		bench.SetQPSLimit(benchOpts.qpsLimit)
+		hb.SetQPSLimit(benchOpts.qpsLimit)
 	}
 
 	ccolor.Infoln("Configuration:")
@@ -120,7 +139,7 @@ func runBenchmark(c *cflag.CFlags) error {
 
 	// 执行测试
 	ccolor.Infof("Benchmarking %s (be patient)\n", url)
-	result, err := bench.Run()
+	result, err := hb.Run()
 	if err != nil {
 		return fmt.Errorf("benchmark failed: %v", err)
 	}
