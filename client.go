@@ -24,9 +24,9 @@ type Client struct {
 	// eg: http://example.com/{name}
 	Vars map[string]string
 
-	// BeforeSend callback
+	// BeforeSend callback on each request
 	BeforeSend func(r *http.Request)
-	// AfterSend callback
+	// AfterSend callback on each request
 	AfterSend AfterSendFn
 
 	//
@@ -45,7 +45,10 @@ type Client struct {
 	respDecoder RespDecoder
 }
 
-// New create
+// NewClient create a new http request client. alias of New()
+func NewClient(baseURL ...string) *Client { return New(baseURL...) }
+
+// New create a new http request client.
 func New(baseURL ...string) *Client {
 	h := &Client{
 		doer:   &http.Client{},
@@ -62,7 +65,7 @@ func New(baseURL ...string) *Client {
 	return h
 }
 
-// Sub create an instance from current.
+// Sub create an instance from current. will inherit all options
 func (h *Client) Sub() *Client {
 	// copy HeaderM pairs into new Header map
 	headerCopy := make(http.Header)
@@ -323,24 +326,16 @@ func (h *Client) QueryParams(ps any) *Builder {
 // -----------------------------
 
 // Body with custom any type body
-func (h *Client) Body(body any) *Builder {
-	return BuilderWithClient(h).AnyBody(body)
-}
+func (h *Client) Body(body any) *Builder { return BuilderWithClient(h).AnyBody(body) }
 
 // AnyBody with custom any type body
-func (h *Client) AnyBody(body any) *Builder {
-	return BuilderWithClient(h).AnyBody(body)
-}
+func (h *Client) AnyBody(body any) *Builder { return BuilderWithClient(h).AnyBody(body) }
 
 // BodyReader with custom io reader body
-func (h *Client) BodyReader(r io.Reader) *Builder {
-	return BuilderWithClient(h).BodyReader(r)
-}
+func (h *Client) BodyReader(r io.Reader) *Builder { return BuilderWithClient(h).BodyReader(r) }
 
 // BodyProvider with custom body provider
-func (h *Client) BodyProvider(bp BodyProvider) *Builder {
-	return BuilderWithClient(h).BodyProvider(bp)
-}
+func (h *Client) BodyProvider(bp BodyProvider) *Builder { return BuilderWithClient(h).BodyProvider(bp) }
 
 //
 // region Send request
@@ -376,7 +371,7 @@ func (h *Client) MustSend(method, url string, optFns ...OptionFn) *Response {
 //	<content>
 func (h *Client) SendRaw(raw string, varMp map[string]string) (*Response, error) {
 	method := "GET"
-	reqUrl := "TODO"
+	reqUrl := "TODO" // TODO
 
 	var body io.Reader
 	req, err := http.NewRequest(method, reqUrl, body)

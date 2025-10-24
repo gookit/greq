@@ -27,6 +27,10 @@ func BaseURL(baseURL string) *Client {
 	return std.BaseURL(baseURL)
 }
 
+//
+// region Quickly request
+// -----------------------------------
+
 // GetDo sets the method to GET and sets the given pathURL, then send request and return response.
 func GetDo(pathURL string, optFns ...OptionFn) (*Response, error) {
 	return std.SendWithOpt(pathURL, NewOpt2(optFns, http.MethodGet))

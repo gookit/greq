@@ -21,8 +21,8 @@
 - Built-In: fom, json request body provider
 - Built-In: xml, json response body decoder
 - Built-in command tool:
-  - `cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA 'http' file format
-  - `cmd/gbench` is a simple HTTP request load testing tool similar to 'ab' testing tool
+  - `cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA `.http` file format
+  - `cmd/gbench` is a simple HTTP request load testing tool similar to `ab` testing tool
 
 ## Install
 
@@ -255,7 +255,7 @@ Server: gunicorn/19.9.0
 
 ### `greq` Tool
 
-`greq` 是一个 HTTP 请求工具，类似 `curl`，支持 IDEA `http` 文件格式。
+`cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA `.http` file format
 
 **Install tool**:
 
@@ -278,7 +278,7 @@ greq -X POST -d '{"name": "inhere"}' https://httpbin.org/post
 
 ### `gbench` Tool
 
-`gbench` 是一个 HTTP 负载压力测试工具，类似 `ab` 测试工具。
+`cmd/gbench` is a simple HTTP request load testing tool similar to `ab` testing tool
 
 **Install tool**:
 

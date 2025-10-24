@@ -1,4 +1,4 @@
-// Package greq is a simple http cli request builder, inspired from https://github.com/dghubble/sling
+// Package greq is a simple http client request builder, support batch requests.
 package greq
 
 import (
