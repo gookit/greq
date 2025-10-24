@@ -495,7 +495,7 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 
 	// check opt.Body
 	if allowBody && body == nil && opt.Body != nil {
-		body = httpreq.MakeBody(opt.Data, cType)
+		body = httpreq.MakeBody(opt.Body, cType)
 	}
 
 	// create request

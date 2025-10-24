@@ -20,11 +20,23 @@
 - Supports defining request body provider and response decoder
 - Built-In: fom, json request body provider
 - Built-In: xml, json response body decoder
+- Built-in command tool:
+  - `cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA 'http' file format
+  - `cmd/gbench` is a simple HTTP request load testing tool similar to 'ab' testing tool
 
 ## Install
 
 ```bash
 go get github.com/gookit/greq
+```
+
+### Install Tools
+
+```bash
+# HTTP request tool
+go install github.com/gookit/greq/cmd/greq@latest
+# HTTP request testing
+go install github.com/gookit/greq/cmd/gbench@latest
 ```
 
 ## Quick start
@@ -237,6 +249,54 @@ Server: gunicorn/19.9.0
   "origin": "222.210.59.218", 
   "url": "https://httpbin.org/get"
 }
+```
+
+## Command Tool Usage
+
+### `greq` Tool
+
+`greq` 是一个 HTTP 请求工具，类似 `curl`，支持 IDEA `http` 文件格式。
+
+**Install tool**:
+
+```bash
+go install github.com/gookit/greq/cmd/greq@latest
+```
+
+**Show options**:
+
+```bash
+greq -h
+```
+
+**Usage examples**:
+
+```bash
+greq https://httpbin.org/get
+greq -X POST -d '{"name": "inhere"}' https://httpbin.org/post
+```
+
+### `gbench` Tool
+
+`gbench` 是一个 HTTP 负载压力测试工具，类似 `ab` 测试工具。
+
+**Install tool**:
+
+```bash
+go install github.com/gookit/greq/cmd/gbench@latest
+```
+
+**Show options**:
+
+```bash
+gbench -h
+```
+
+**Usage examples**：
+
+```bash
+gbench -c 10 -n 100 https://httpbin.org/get
+gbench -c 10 -n 100 -d '{"name": "inhere"}' https://httpbin.org/post
 ```
 
 ## Refers

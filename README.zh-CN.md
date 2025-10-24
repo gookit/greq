@@ -17,14 +17,26 @@
 - 自定义提供请求Body
 - 自定义响应Body解析
 - 支持定义添加任意的中间件
+- 内置命令工具
+  - `cmd/greq` 一个简单的 HTTP 请求工具，类似curl同时支持IDEA `http` 文件格式
+  - `cmd/gbench` 一个简单的 HTTP 请求压力测试工具，类似 `ab` 测试工具
 
-## Install
+## 安装
 
 ```bash
 go get github.com/gookit/greq
 ```
 
-## Quick start
+### 安装内置工具
+
+```bash
+# HTTP 请求工具
+go install github.com/gookit/greq/cmd/greq@latest
+# HTTP 测试工具
+go install github.com/gookit/greq/cmd/gbench@latest
+```
+
+## 快速开始
 
 ```go
 package main
@@ -72,7 +84,7 @@ map[string]interface {} { #len=4
 },
 ```
 
-## Use middleware
+### 使用中间件
 
 ```go
 	buf := &bytes.Buffer{}
@@ -115,11 +127,11 @@ map[string]interface {} { #len=4
 MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
 ```
 
-## More usage
+## 更多使用
 
 ### Response to string
 
-`greq.Response.String()` can convert response to string.
+`greq.Response.String()` 可以将响应转换为字符串，方便观察结果。
 
 ```go
 package main
@@ -166,6 +178,54 @@ Server: gunicorn/19.9.0
   "origin": "222.210.59.218", 
   "url": "https://httpbin.org/get"
 }
+```
+
+## 命令工具使用
+
+### `greq` 工具
+
+`greq` 是一个简单的 HTTP 请求工具，类似 `curl`，支持 IDEA `http` 文件格式。
+
+**安装工具**：
+
+```bash
+go install github.com/gookit/greq/cmd/greq@latest
+```
+
+**查看选项**：
+
+```bash
+greq -h
+```
+
+**使用示例**：
+
+```bash
+greq https://httpbin.org/get
+greq -X POST -d '{"name": "inhere"}' https://httpbin.org/post
+```
+
+### `gbench` 工具
+
+`gbench` 是一个 HTTP 负载压力测试工具，类似 `ab` 测试工具。
+
+**安装工具**：
+
+```bash
+go install github.com/gookit/greq/cmd/gbench@latest
+```
+
+**查看选项**：
+
+```bash
+gbench -h
+```
+
+**使用示例**：
+
+```bash
+gbench -c 10 -n 100 https://httpbin.org/get
+gbench -c 10 -n 100 -d '{"name": "inhere"}' https://httpbin.org/post
 ```
 
 ## Refers

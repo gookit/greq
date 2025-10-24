@@ -122,3 +122,31 @@ func WithUserAgent(userAgent string) OptionFn {
 		opt.Header.Set("User-Agent", userAgent)
 	}
 }
+
+// WithHeader set header
+func WithHeader(key, value string) OptionFn {
+	return func(opt *Options) {
+		opt.Header.Set(key, value)
+	}
+}
+
+// WithBody set body data
+func WithBody(body any) OptionFn {
+	return func(opt *Options) {
+		opt.Body = body
+	}
+}
+
+// WithData set data for request
+func WithData(data any) OptionFn {
+	return func(opt *Options) {
+		opt.Data = data
+	}
+}
+
+// WithTimeout set timeout (ms)
+func WithTimeout(timeoutMs int) OptionFn {
+	return func(opt *Options) {
+		opt.Timeout = timeoutMs
+	}
+}

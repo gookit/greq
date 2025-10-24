@@ -2,10 +2,10 @@
 
 - [ ] allow to uploading files
 - [x] can send benchmark requests
-- [ ] request to CURL command
-- [ ] allow sending raw text http contents(IDE .http file)
+- [x] request to CURL command
+- [x] allow sending raw text http contents(IDE .http file)
 - [ ] batch sends requests, wait one ok OR wait all ok
 - [ ] retry send request when error
 - backup url on request error or custom condition
-- cli bin
-- cli request,download file
+- [x] cli bin
+- [x] cli request,download file
