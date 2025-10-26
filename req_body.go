@@ -3,7 +3,7 @@ package greq
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -81,5 +81,5 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 	if str, ok := p.payload.(string); ok {
 		return strings.NewReader(str), nil
 	}
-	return nil, errors.New("invalid payload data for Form body")
+	return nil, fmt.Errorf("formBodyProvider: invalid form data type: %T", p.payload)
 }

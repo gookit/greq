@@ -1,3 +1,6 @@
+// Package batch provides utilities for batch processing HTTP requests
+//  - supports concurrent execution with configurable concurrency and timeout
+//  - provides methods for adding requests and executing them in batches
 package batch
 
 import (

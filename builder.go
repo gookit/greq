@@ -185,6 +185,14 @@ func (b *Builder) SetHeaderMap(headers map[string]string) *Builder {
 	return b
 }
 
+// RemoveHeaders removes the keys from HeaderM.
+func (b *Builder) RemoveHeaders(keys ...string) *Builder {
+	for _, key := range keys {
+		b.Header.Del(key)
+	}
+	return b
+}
+
 // UserAgent set User-Agent header
 func (b *Builder) UserAgent(ua string) *Builder {
 	b.HeaderM[httpheader.UserAgent] = ua
@@ -319,17 +327,13 @@ func (b *Builder) FileContentsBody(filePath string) *Builder {
 
 // JSONBody with JSON data body
 func (b *Builder) JSONBody(jsonData any) *Builder {
-	b.Provider = jsonBodyProvider{
-		payload: jsonData,
-	}
+	b.Provider = jsonBodyProvider{payload: jsonData}
 	return b
 }
 
 // FormBody with form data body
 func (b *Builder) FormBody(formData any) *Builder {
-	b.Provider = formBodyProvider{
-		payload: formData,
-	}
+	b.Provider = formBodyProvider{payload: formData}
 	return b
 }
 

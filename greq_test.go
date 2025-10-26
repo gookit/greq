@@ -9,6 +9,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/testutil"
+	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
 )
 
@@ -43,4 +44,15 @@ func TestMain(m *testing.M) {
 
 	// do something
 	m.Run()
+}
+
+func TestMust(t *testing.T) {
+	// Test that Must() panics when an error is returned
+	assert.Panics(t, func() {
+		greq.Must(greq.GetDo("https://invalid-url"))
+	})
+
+	assert.NotPanics(t, func() {
+		greq.Must(greq.GetDo(testBaseURL + "/get"))
+	})
 }

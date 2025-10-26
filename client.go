@@ -41,7 +41,7 @@ type Client struct {
 	query gourl.Values
 	// content type
 	ContentType string
-	// response data decoder
+	// response data decoder. use for create Response instance.
 	respDecoder RespDecoder
 }
 
@@ -110,7 +110,7 @@ func (h *Client) Config(fn func(doer httpreq.Doer)) *Client {
 	return h
 }
 
-// ConfigHClient custom config http cli.
+// ConfigHClient custom config http client.
 //
 // Usage:
 //

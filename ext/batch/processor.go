@@ -268,3 +268,23 @@ func (bp *Processor) Close() {
 	bp.cancel()
 	close(bp.results)
 }
+
+// MaxConcurrency returns the maximum number of concurrent requests
+func (bp *Processor) MaxConcurrency() int {
+	return bp.maxConcurrency
+}
+
+// Timeout returns the timeout for the batch operation
+func (bp *Processor) Timeout() time.Duration {
+	return bp.timeout
+}
+
+// Client returns the HTTP client used for requests
+func (bp *Processor) Client() *greq.Client {
+	return bp.client
+}
+
+// Context returns the context for the batch operation
+func (bp *Processor) Context() context.Context {
+	return bp.ctx
+}
