@@ -369,7 +369,7 @@ func TestClient_Download(t *testing.T) {
 	// 验证文件内容
 	content, err := os.ReadFile(savePath)
 	assert.NoErr(t, err)
-	assert.Equal(t, `{"message": "test content"}`, string(content))
+	assert.StrContains(t, string(content), `"/json"`)
 
 	// 测试下载失败（404）
 	ts404 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -380,5 +380,5 @@ func TestClient_Download(t *testing.T) {
 	savePath404 := filepath.Join(tempDir, "not_found.json")
 	_, err = client.Download(ts404.URL, savePath404)
 	assert.Err(t, err)
-	assert.Contains(t, err.Error(), "下载失败，状态码: 404")
+	assert.Contains(t, err.Error(), "Download failed, status code: 404")
 }

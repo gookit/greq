@@ -9,14 +9,16 @@
 
 > [中文说明](README.zh-CN.md) | [English](README.md)
 
-**greq** A simple http client request builder and sender
+**greq** 一个简单的 HTTP 客户端请求构建器和发送器，支持下载、重试等增强功能。
 
 ## 功能说明
 
 - 链式配置请求，支持 `GET,POST,PUT,PATCH,DELETE,HEAD` 等通用请求方法
-- 自定义提供请求 Body
-- 自定义响应 Body 解析
+- 自定义提供请求 Body 数据，支持 `JSON,XML,Form,MultiPart,File` 等格式
+- 自定义响应 Body 解析，支持 `JSON,XML` 等格式
 - 支持定义添加任意的中间件
+- 支持请求重试功能，可以自定义重试次数、间隔和重试检查器
+  - 默认重试检查器 `DefaultRetryChecker` ，支持对网络错误、5xx服务器错误和429限流错误进行重试
 - 支持直接解析并发送 `.http` 文件格式请求
 - 内置命令工具
   - `cmd/greq` 一个简单的 HTTP 请求工具，类似curl同时支持IDEA `http` 文件格式

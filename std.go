@@ -2,7 +2,6 @@ package greq
 
 import (
 	"net/http"
-	"net/url"
 
 	"github.com/gookit/goutil"
 )
@@ -17,14 +16,14 @@ func Std() *Client {
 
 // Reset std default settings
 func Reset() *Client {
-	std.header = make(http.Header)
-	std.query = make(url.Values, 0)
+	std.Header = make(http.Header)
+	// std.Query = make(url.Values, 0)
 	return std
 }
 
 // BaseURL set base URL for request
 func BaseURL(baseURL string) *Client {
-	return std.BaseURL(baseURL)
+	return std.WithBaseURL(baseURL)
 }
 
 //

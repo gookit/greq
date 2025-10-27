@@ -105,11 +105,11 @@ Request body`,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hf, err := httpfile.ParseFileContent(tt.content)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseFileContent() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr {
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, hf)
 				assert.Equal(t, len(tt.want), len(hf.Requests))
 				for i, wantReq := range tt.want {
 					assert.Equal(t, wantReq.Method, hf.Requests[i].Method)

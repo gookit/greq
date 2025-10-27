@@ -27,12 +27,13 @@ type HTTPFile struct {
 
 // ParseFileContent parse a HTTP request file content.
 func ParseFileContent(contents string) (*HTTPFile, error) {
+	hf := &HTTPFile{Contents: contents}
+
 	// 如果内容为空，直接返回空列表
 	if strings.TrimSpace(contents) == "" {
-		return nil, fmt.Errorf("input contents is empty")
+		return hf, nil
 	}
 
-	hf := &HTTPFile{Contents: contents}
 	err := hf.Parse()
 	return hf, err
 }

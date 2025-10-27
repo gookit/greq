@@ -23,7 +23,7 @@ func (h *Client) wrapMiddlewares() {
 		if err != nil {
 			return nil, err
 		}
-		return NewResponse(rawResp, h.respDecoder), nil
+		return NewResponse(rawResp, h.RespDecoder), nil
 	}
 
 	for _, m := range h.middles {

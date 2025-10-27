@@ -49,7 +49,7 @@ type Client struct {
 	AfterSend AfterSendFn
 
 	//
-	// retry config
+	// default retry config
 	//
 
 	// MaxRetries max retry times. default is 0 (not retry)

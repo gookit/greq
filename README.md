@@ -9,15 +9,16 @@
 
 > [中文说明](README.zh-CN.md) | [English](README.md)
 
-**greq** A simple http client request builder and sender
+**greq** A simple HTTP client request builder and sender, with retry feature.
 
 ## Features
 
-- Make http requests, supports `GET,POST,PUT,PATCH,DELETE,HEAD`
+- Make HTTP requests, supports `GET,POST,PUT,PATCH,DELETE,HEAD`
 - Transform request and response data
 - Supports chain configuration request
 - Supports defining and adding middleware
 - Supports defining request body provider and response decoder
+- Supports request retry feature, with default retry checker `DefaultRetryChecker`
 - Built-In: fom, json request body provider
 - Built-In: xml, json response body decoder
 - Support for directly parsing and sending `.http` file format requests
