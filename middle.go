@@ -15,18 +15,15 @@ func (mf MiddleFunc) Handle(r *http.Request, next HandleFunc) (*Response, error)
 	return mf(r, next)
 }
 
+// wrap middlewares, and will wrap http.Response to Response
 func (h *Client) wrapMiddlewares() {
+	// set core handler
 	h.handler = func(r *http.Request) (*Response, error) {
 		rawResp, err := h.doer.Do(r)
 		if err != nil {
 			return nil, err
 		}
-
-		return &Response{
-			Response: rawResp,
-			// with decoder
-			decoder: h.respDecoder,
-		}, nil
+		return NewResponse(rawResp, h.respDecoder), nil
 	}
 
 	for _, m := range h.middles {

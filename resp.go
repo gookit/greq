@@ -10,11 +10,18 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
-// Response is a http.Response wrapper
+// Response is a http.Response wrapper, add some useful methods.
 type Response struct {
 	*http.Response
+	// CostTime for a request-response. unit: ms
+	CostTime int64
 	// decoder for response, default will extends from Client.respDecoder
 	decoder RespDecoder
+}
+
+// NewResponse create a new Response instance
+func NewResponse(resp *http.Response, decoder RespDecoder) *Response {
+	return &Response{Response: resp, decoder: decoder}
 }
 
 // IsOK check response status code is 200

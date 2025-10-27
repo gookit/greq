@@ -6,6 +6,7 @@ import (
 	"net/http"
 	gourl "net/url"
 	"strings"
+	"time"
 
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpheader"
@@ -421,7 +422,9 @@ func (h *Client) SendWithOpt(pathURL string, opt *Options) (*Response, error) {
 
 // SendRequest send request
 func (h *Client) SendRequest(req *http.Request) (*Response, error) {
-	// wrap middlewares
+    start := time.Now()
+
+	// wrap middlewares, and will wrap http.Response to Response
 	h.wrapMiddlewares()
 
 	// call before send.
@@ -431,6 +434,10 @@ func (h *Client) SendRequest(req *http.Request) (*Response, error) {
 
 	// do send by core handler
 	resp, err := h.handler(req)
+	if resp != nil {
+		// set cost time
+		resp.CostTime = time.Since(start).Milliseconds()
+	}
 
 	// call after send.
 	if h.AfterSend != nil {
