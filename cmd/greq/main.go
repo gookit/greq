@@ -15,6 +15,7 @@ import (
 	"github.com/gookit/goutil/x/ccolor"
 	"github.com/gookit/greq"
 	"github.com/gookit/greq/ext/httpfile"
+	"github.com/gookit/greq/requtil"
 )
 
 var cmdOpts = struct {
@@ -225,21 +226,14 @@ func handleDownload(url string) error {
 	}
 
 	// 写入文件
-	file, err := os.Create(filename)
+	n, err := resp.SaveFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	written, err := io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write file: %v", err)
+		return fmt.Errorf("failed to save file: %v", err)
 	}
 
 	if !cmdOpts.silent {
-		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(written))
+		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(n))
 	}
-
 	return nil
 }
 
@@ -343,10 +337,9 @@ func outputResponse(resp *greq.Response) error {
 // getFilenameFromURL 从URL获取文件名
 func getFilenameFromURL(url string, resp *greq.Response) string {
 	// 尝试从Content-Disposition获取文件名
-	if disposition := resp.Header.Get("Content-Disposition"); disposition != "" {
-		if filename := extractFilename(disposition); filename != "" {
-			return filename
-		}
+	disposition := resp.Header.Get("Content-Disposition")
+	if filename := requtil.FilenameFromDisposition(disposition); filename != "" {
+		return filename
 	}
 
 	// 从URL路径获取文件名
@@ -375,39 +368,19 @@ func handleDownloadFromResponse(url string, resp *greq.Response) error {
 	}
 
 	// 写入文件
-	file, err := os.Create(filename)
+	n, err := resp.SaveFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	written, err := io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write file: %v", err)
+		return fmt.Errorf("failed to save file: %v", err)
 	}
 
 	if !cmdOpts.silent {
-		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(written))
+		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(n))
 	}
-
 	return nil
 }
 
-// extractFilename 从Content-Disposition提取文件名
-func extractFilename(disposition string) string {
-	parts := strings.Split(disposition, ";")
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if strings.HasPrefix(part, "filename=") {
-			filename := strings.TrimPrefix(part, "filename=")
-			return strings.Trim(filename, "\"'")
-		}
-	}
-	return ""
-}
-
 // formatBytes 格式化字节大小
-func formatBytes(bytes int64) string {
+func formatBytes(bytes int) string {
 	const unit = 1024
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)

@@ -114,10 +114,10 @@ func (r *Response) BodyString() string {
 }
 
 // SaveFile file on the response body is not-nil.
-func (r *Response) SaveFile(file string) (err error) {
+func (r *Response) SaveFile(file string) (n int, err error) {
 	if r.Body != nil {
 		defer r.QuietCloseBody()
-		err = fsutil.WriteFile(file, r.Body, fsutil.DefaultFilePerm)
+		n, err = fsutil.PutContents(file, r.Body)
 	}
 	return
 }

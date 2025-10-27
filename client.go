@@ -544,17 +544,17 @@ func (h *Client) String() string {
 }
 
 // Download download file from url and save to savePath.
-func (h *Client) Download(url, savePath string, optFns ...OptionFn) error {
+func (h *Client) Download(url, savePath string, optFns ...OptionFn) (n int, err error) {
 	// 发送GET请求
 	resp, err := h.Send(http.MethodGet, url, optFns...)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.QuietCloseBody()
 
 	// 检查响应状态
 	if resp.IsFail() {
-		return fmt.Errorf("Download failed, status code: %d", resp.StatusCode)
+		return 0, fmt.Errorf("Download failed, status code: %d", resp.StatusCode)
 	}
 
 	// 使用Response的SaveFile方法保存文件

@@ -137,7 +137,7 @@ func TestClient_Download(t *testing.T) {
 
 	// 测试下载成功
 	savePath := filepath.Join(tempDir, "test_down.json")
-	err = client.Download(testBaseURL + "/json", savePath)
+	_, err = client.Download(testBaseURL + "/json", savePath)
 	assert.NoErr(t, err)
 
 	// 验证文件内容
@@ -152,7 +152,7 @@ func TestClient_Download(t *testing.T) {
 	defer ts404.Close()
 
 	savePath404 := filepath.Join(tempDir, "not_found.json")
-	err = client.Download(ts404.URL, savePath404)
+	_, err = client.Download(ts404.URL, savePath404)
 	assert.Err(t, err)
 	assert.Contains(t, err.Error(), "下载失败，状态码: 404")
 }
