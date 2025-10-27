@@ -287,9 +287,9 @@ func handleNormalRequest(url string) error {
 		ccolor.Cyanf("Requesting URL: %s %s\n", reqMethod, url)
 	}
 
-	greq.Std().BeforeSend = func(req *http.Request) {
+	greq.Std().BeforeSend = func(req *http.Request) error {
 		if !cmdOpts.verbose {
-			return
+			return nil
 		}
 		ccolor.Cyanln("Request Header:")
 		for k, v := range req.Header {
@@ -299,6 +299,7 @@ func handleNormalRequest(url string) error {
 			ccolor.Cyanln("Request   Body:")
 			fmt.Printf("  %s\n\n", string(bodyData))
 		}
+		return nil
 	}
 
 	// 发送请求

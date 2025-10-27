@@ -43,8 +43,8 @@ type Client struct {
 	//
 	// eg: http://example.com/${name}
 	ReqVars map[string]string
-	// BeforeSend callback on each request
-	BeforeSend func(r *http.Request)
+	// BeforeSend callback on each request, can return error to deny request.
+	BeforeSend func(r *http.Request) error
 	// AfterSend callback on each request
 	AfterSend AfterSendFn
 
@@ -201,7 +201,7 @@ func (h *Client) WithRespDecoder(respDecoder RespDecoder) *Client {
 }
 
 // OnBeforeSend for cli
-func (h *Client) OnBeforeSend(fn func(r *http.Request)) *Client {
+func (h *Client) OnBeforeSend(fn func(r *http.Request) error) *Client {
 	h.BeforeSend = fn
 	return h
 }
@@ -518,7 +518,9 @@ func (h *Client) sendRequestWithRetry(req *http.Request, attempt int) (*Response
 
 	// call before send.
 	if h.BeforeSend != nil {
-		h.BeforeSend(req)
+		if err := h.BeforeSend(req); err != nil {
+			return nil, fmt.Errorf("before send check failed: %w", err)
+		}
 	}
 
 	// do send by core handler
