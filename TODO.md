@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] allow to uploading files
+- [ ] allow to download/uploading files
 - [x] can send benchmark requests
 - [x] request to CURL command
 - [x] allow sending raw text http contents(IDE .http file)

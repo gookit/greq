@@ -2,26 +2,101 @@ package httpfile
 
 import (
 	"fmt"
+	"os"
 	"strings"
+
+	"github.com/gookit/goutil/strutil/textutil"
 )
 
-// ParseOneRequest parse a HTTP request from content string.
-func ParseOneRequest(content string) (*HTTPRequest, error) {
+// HTTPRequest represents an HTTP request.
+//   - URL, Headers, Body 可以包含变量，格式为 `${var_name}`
+type HTTPRequest struct {
+	// Name is the name of the HTTP request. parsed from ### line
+	Name     string
+	Comments []string
+	// Method is the HTTP method of the request.
+	Method  string
+	URL     string
+	Headers map[string]string
+	Body    string
+}
+
+var rpl = textutil.NewVarReplacer("${,}").WithParseEnv().
+	OnNotFound(func(varName string) (string, bool) {
+		// 从环境变量获取
+		if value := os.Getenv(varName); value != "" {
+			return value, true
+		}
+		return varName, true
+	})
+
+// ApplyVars apply variables to the HTTP request.
+func (req *HTTPRequest) ApplyVars(varMap map[string]string) {
+	req.URL = req.URLString(varMap)
+	req.Body = req.BodyString(varMap)
+	req.Headers = req.HeadersMap(varMap)
+}
+
+// URLString get the URL of the HTTP request.
+func (req *HTTPRequest) URLString(varMap map[string]string) string {
+	if strings.Contains(req.URL, "${") {
+		req.URL = rpl.RenderSimple(req.URL, varMap)
+	}
+	return req.URL
+}
+
+// BodyString get the body of the HTTP request.
+func (req *HTTPRequest) BodyString(varMap map[string]string) string {
+	if strings.Contains(req.Body, "${") {
+		req.Body = rpl.RenderSimple(req.Body, varMap)
+	}
+	return req.Body
+}
+
+// HeadersMap get the headers of the HTTP request.
+func (req *HTTPRequest) HeadersMap(varMap map[string]string) map[string]string {
+	if len(req.Headers) == 0 {
+		return req.Headers
+	}
+
+	headers := make(map[string]string)
+	for k, v := range req.Headers {
+		if strings.Contains(v, "${") {
+			v = rpl.RenderSimple(v, varMap)
+		}
+		headers[k] = v
+	}
+	return headers
+}
+
+// ParseRequestWithVars parse a HTTP request from content string.
+func ParseRequestWithVars(content string, varMap map[string]string) (*HTTPRequest, error) {
+	req, err := ParseRequest(content)
+	if err != nil {
+		return nil, err
+	}
+
+	req.ApplyVars(varMap)
+	return req, nil
+}
+
+// ParseRequest parse a HTTP request from content string.
+func ParseRequest(content string) (*HTTPRequest, error) {
 	lines := strings.Split(content, "\n")
 	if len(lines) < 1 {
 		return nil, fmt.Errorf("invalid http request content, at least 1 line")
 	}
 
 	req := &HTTPRequest{
-		Headers: make(map[string]string),
+		Headers:  make(map[string]string),
 		Comments: make([]string, 0),
 	}
 
-	var inHeaders bool // 标记是否在解析头部
-	var inBody bool    // 标记是否在解析请求体
-	var hasBodyStart bool // 标记是否已经遇到请求体开始
+	var inHeaders bool      // 标记是否在解析头部
+	var inBody bool         // 标记是否在解析请求体
+	var hasBodyStart bool   // 标记是否已经遇到请求体开始
 	var hasRequestLine bool // 标记是否已经处理请求行
-	var hasHeaders bool // 标记是否已经有头部
+	var hasHeaders bool     // 标记是否已经有头部
 
 	for _, line := range lines {
 		// 保留原始行用于请求体（可能包含空格）
@@ -59,7 +134,7 @@ func ParseOneRequest(content string) (*HTTPRequest, error) {
 			continue
 		}
 
-		// 处理请求行（方法 URL）
+		// 处理请求行（METHOD URL）
 		if !inHeaders && !hasRequestLine {
 			parts := strings.Fields(trimmedLine)
 			if len(parts) >= 2 {
@@ -112,4 +187,20 @@ func ParseOneRequest(content string) (*HTTPRequest, error) {
 	}
 
 	return req, nil
+}
+
+var validMethods = []string{
+	"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE",
+}
+
+// isValidHTTPMethod 检查是否是有效的 HTTP 方法
+func isValidHTTPMethod(method string) bool {
+	method = strings.ToUpper(method)
+	for _, m := range validMethods {
+		if method == m {
+			return true
+		}
+	}
+
+	return false
 }

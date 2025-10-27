@@ -20,9 +20,10 @@
 - Supports defining request body provider and response decoder
 - Built-In: fom, json request body provider
 - Built-In: xml, json response body decoder
+- Support for directly parsing and sending `.http` file format requests
 - Built-in command tool:
-  - `cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA `.http` file format
-  - `cmd/gbench` is a simple HTTP request load testing tool similar to `ab` testing tool
+  - `cmd/greq` Lightweight HTTP request tool similar to curl and supports the IDEA `.http` file format
+  - `cmd/gbench` Lightweight HTTP request load testing tool similar to `ab` testing tool
 
 ## Install
 
@@ -209,7 +210,7 @@ package main
 
 import (
 	"fmt"
-	
+
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/greq"
 )
@@ -218,7 +219,7 @@ func main() {
 	resp, err := greq.New("https://httpbin.org").
 		UserAgent("custom-client/1.0").
 		Send("/get")
-	
+
 	if err != nil {
 		panic(err)
 	}
@@ -239,14 +240,14 @@ Content-Length: 272
 Server: gunicorn/19.9.0
 
 {
-  "args": {}, 
+  "args": {},
   "headers": {
-    "Accept-Encoding": "gzip", 
-    "Host": "httpbin.org", 
-    "User-Agent": "custom-client/1.0", 
+    "Accept-Encoding": "gzip",
+    "Host": "httpbin.org",
+    "User-Agent": "custom-client/1.0",
     "X-Amzn-Trace-Id": "Root=1-61e64797-3e428a925f7709906a8b7c01"
-  }, 
-  "origin": "222.210.59.218", 
+  },
+  "origin": "222.210.59.218",
   "url": "https://httpbin.org/get"
 }
 ```
@@ -255,7 +256,7 @@ Server: gunicorn/19.9.0
 
 ### `greq` Tool
 
-`cmd/greq` is a simple HTTP request tool similar to curl and supports the IDEA `.http` file format
+`cmd/greq` Lightweight HTTP request tool similar to curl and supports the IDEA `.http` file format
 
 **Install tool**:
 
@@ -278,7 +279,7 @@ greq -X POST -d '{"name": "inhere"}' https://httpbin.org/post
 
 ### `gbench` Tool
 
-`cmd/gbench` is a simple HTTP request load testing tool similar to `ab` testing tool
+`cmd/gbench` Lightweight HTTP request load testing tool similar to `ab` testing tool
 
 **Install tool**:
 

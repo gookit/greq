@@ -11,6 +11,7 @@ import (
 	"github.com/gookit/goutil/netutil/httpheader"
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/strutil"
+	"github.com/gookit/greq/ext/httpfile"
 )
 
 // Client is an HTTP Request builder and sender.
@@ -39,7 +40,7 @@ type Client struct {
 	header  http.Header
 	// Query params data. allow: map[string]string, url.Values
 	query gourl.Values
-	// content type
+	// defalut content type
 	ContentType string
 	// response data decoder. use for create Response instance.
 	respDecoder RespDecoder
@@ -370,13 +371,27 @@ func (h *Client) MustSend(method, url string, optFns ...OptionFn) *Response {
 //
 //	<content>
 func (h *Client) SendRaw(raw string, varMp map[string]string) (*Response, error) {
-	method := "GET"
-	reqUrl := "TODO" // TODO
-
-	var body io.Reader
-	req, err := http.NewRequest(method, reqUrl, body)
+	rawReq, err := httpfile.ParseRequest(raw)
 	if err != nil {
 		return nil, err
+	}
+	rawReq.ApplyVars(varMp)
+
+	var body = strings.NewReader(rawReq.Body)
+	fullURL := h.buildFullURL(rawReq.URL)
+
+	req, err := http.NewRequest(rawReq.Method, fullURL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// apply headers
+	if len(rawReq.Headers) > 0 {
+		httpreq.SetHeaderMap(req, rawReq.Headers)
+	}
+	// apply default content type
+	if len(h.ContentType) > 0 && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", h.ContentType)
 	}
 
 	return h.SendRequest(req)

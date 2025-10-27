@@ -9,33 +9,6 @@ import (
 	"github.com/gookit/goutil/strutil"
 )
 
-// isValidHTTPMethod 检查是否是有效的 HTTP 方法
-func isValidHTTPMethod(method string) bool {
-	validMethods := []string{
-		"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE",
-	}
-
-	for _, m := range validMethods {
-		if strings.ToUpper(method) == m {
-			return true
-		}
-	}
-
-	return false
-}
-
-// HTTPRequest represents an HTTP request.
-type HTTPRequest struct {
-	// Name is the name of the HTTP request. parsed from ### line
-	Name    string
-	Comments []string
-	// Method is the HTTP method of the request.
-	Method  string
-	URL     string
-	Headers map[string]string
-	Body    string
-}
-
 // HTTPFile represents an HTTP request file. It contains a list of HTTP requests.
 //
 // 文件内容格式:
@@ -83,7 +56,15 @@ func (hf *HTTPFile) SearchName(keywords ...string) []*HTTPRequest {
 }
 
 // SearchOne search one request by keywords. will return the first request that name contains all keywords.
+//   - if no keywords, will return the first request.
 func (hf *HTTPFile) SearchOne(keywords ...string) *HTTPRequest {
+	if len(keywords) == 0 {
+		if len(hf.Requests) == 0 {
+			return nil
+		}
+		return hf.Requests[0]
+	}
+
 	for _, req := range hf.Requests {
 		if strutil.ContainsAll(req.Name, keywords) {
 			return req

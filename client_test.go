@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/gookit/goutil/dump"
+	"github.com/gookit/goutil/testutil"
 	"github.com/gookit/goutil/testutil/assert"
 	"github.com/gookit/greq"
 )
@@ -86,6 +87,28 @@ func TestClient_PostDo(t *testing.T) {
 	err = resp.Decode(&retMp)
 	assert.NoErr(t, err)
 	dump.P(retMp)
+}
+
+func TestClient_SendRaw(t *testing.T) {
+	resp, err := greq.New(testBaseURL).
+		SendRaw(`POST /post HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Accept: */*
+
+{"name": "inhere", "age": ${age}}`, map[string]string{"age": "25"})
+
+	assert.NoErr(t, err)
+	assert.True(t, resp.IsOK())
+	assert.True(t, resp.IsSuccessful())
+
+	resData := testutil.ParseRespToReply(resp.Response)
+	assert.NotEmpty(t, resData.Body)
+	assert.Eq(t, "application/json", resData.ContentType())
+	jsonData := resData.JSON.(map[string]any)
+	assert.Eq(t, "inhere", jsonData["name"])
+	assert.Eq(t, float64(25), jsonData["age"])
+	dump.P(resData)
 }
 
 func TestClient_String(t *testing.T) {

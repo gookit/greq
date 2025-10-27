@@ -34,7 +34,7 @@ var benchOpts = struct {
 //  gbench -n 1000 -c 10 https://www.baidu.com
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
-		c.Desc = "Benchmark HTTP requests, like ab"
+		c.Desc = "Lightweight Benchmark HTTP requests, like ab"
 		c.Version = "1.0.0"
 	})
 

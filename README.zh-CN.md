@@ -14,9 +14,10 @@
 ## 功能说明
 
 - 链式配置请求，支持 `GET,POST,PUT,PATCH,DELETE,HEAD` 等通用请求方法
-- 自定义提供请求Body
-- 自定义响应Body解析
+- 自定义提供请求 Body
+- 自定义响应 Body 解析
 - 支持定义添加任意的中间件
+- 支持直接解析并发送 `.http` 文件格式请求
 - 内置命令工具
   - `cmd/greq` 一个简单的 HTTP 请求工具，类似curl同时支持IDEA `http` 文件格式
   - `cmd/gbench` 一个简单的 HTTP 请求压力测试工具，类似 `ab` 测试工具
@@ -138,7 +139,7 @@ package main
 
 import (
 	"fmt"
-	
+
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/greq"
 )
@@ -147,7 +148,7 @@ func main() {
 	resp, err := greq.New("https://httpbin.org").
 		UserAgent("custom-client/1.0").
 		Send("/get")
-	
+
 	if err != nil {
 		panic(err)
 	}
@@ -168,14 +169,14 @@ Content-Length: 272
 Server: gunicorn/19.9.0
 
 {
-  "args": {}, 
+  "args": {},
   "headers": {
-    "Accept-Encoding": "gzip", 
-    "Host": "httpbin.org", 
-    "User-Agent": "custom-client/1.0", 
+    "Accept-Encoding": "gzip",
+    "Host": "httpbin.org",
+    "User-Agent": "custom-client/1.0",
     "X-Amzn-Trace-Id": "Root=1-61e64797-3e428a925f7709906a8b7c01"
-  }, 
-  "origin": "222.210.59.218", 
+  },
+  "origin": "222.210.59.218",
   "url": "https://httpbin.org/get"
 }
 ```

@@ -15,12 +15,12 @@ func TestParseOneRequest(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "simple GET request",
+			name:    "simple GET request",
 			content: "GET https://example.com/api",
 			want: &httpfile.HTTPRequest{
-				Method: "GET",
-				URL:    "https://example.com/api",
-				Headers: make(map[string]string),
+				Method:   "GET",
+				URL:      "https://example.com/api",
+				Headers:  make(map[string]string),
 				Comments: []string{},
 			},
 			wantErr: false,
@@ -39,7 +39,7 @@ Authorization: Bearer token
 					"Content-Type":  "application/json",
 					"Authorization": "Bearer token",
 				},
-				Body: `{"name": "test", "value": 123}`,
+				Body:     `{"name": "test", "value": 123}`,
 				Comments: []string{},
 			},
 			wantErr: false,
@@ -52,7 +52,7 @@ GET https://example.com/api
 # Another comment
 X-Custom-Header: custom-value`,
 			want: &httpfile.HTTPRequest{
-				Name: "Request Name",
+				Name:   "Request Name",
 				Method: "GET",
 				URL:    "https://example.com/api",
 				Headers: map[string]string{
@@ -76,7 +76,7 @@ Line 2`,
 				Headers: map[string]string{
 					"Content-Type": "text/plain",
 				},
-				Body: "Line 1\n\nLine 2",
+				Body:     "Line 1\n\nLine 2",
 				Comments: []string{},
 			},
 			wantErr: false,
@@ -95,7 +95,7 @@ Line 2`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := httpfile.ParseOneRequest(tt.content)
+			got, err := httpfile.ParseRequest(tt.content)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseOneRequest() error = %v, wantErr %v", err, tt.wantErr)
 				return

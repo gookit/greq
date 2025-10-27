@@ -1,0 +1,12 @@
+### test request
+GET http://httpbin.org/get
+Content-Type: application/json
+
+### Post request
+POST http://httpbin.org/post
+Content-Type: application/json
+
+{
+  "name": "gookit",
+  "age": 30
+}

@@ -3,25 +3,29 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/gookit/goutil/cflag"
-	"github.com/gookit/goutil/fsutil"
+	"github.com/gookit/goutil/netutil/httpctype"
+	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/strutil"
 	"github.com/gookit/goutil/x/ccolor"
 	"github.com/gookit/greq"
+	"github.com/gookit/greq/ext/httpfile"
 )
 
 var cmdOpts = struct {
 	method   string
 	data     string
 	headers  cflag.KVString
+	formData cflag.KVString
 	timeout  int
 	output   string
 	raw      string
+	httpVars  cflag.KVString // HTTP request variables
 	down     bool
 	verbose  bool
 	silent   bool
@@ -30,13 +34,20 @@ var cmdOpts = struct {
 	json     bool // quick set Content-Type: application/json
 	agent    string // custom user-agent
 }{
-	headers: cflag.KVString{Sep: ":"},
+	headers:  cflag.KVString{Sep: ":"},
+	formData: cflag.KVString{Sep: "="},
+	httpVars:  cflag.KVString{Sep: "="},
 }
 
 // 实现类似curl的http请求工具
+//
+// Install:
+//
+//  go install ./cmd/greq # install from source code
+//	go install github.com/gookit/greq/cmd/greq@latest
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
-		c.Desc = "Simple HTTP request tool, like curl"
+		c.Desc = "Lightweight HTTP request tool, like curl"
 		c.Version = "1.0.0"
 	})
 
@@ -45,9 +56,17 @@ func main() {
 	cmd.StringVar(&cmdOpts.data, "data", "", "HTTP request body data;;d")
 	cmd.StringVar(&cmdOpts.agent, "agent", "", "Custom set User-Agent;;A")
 	cmd.Var(&cmdOpts.headers, "header", `Custom HTTP header, allow multi. eg: "Foo: bar";;H`)
+	cmd.Var(&cmdOpts.formData, "form", `Custom HTTP form data, allow multi. eg: "key=value";;F`)
 	cmd.IntVar(&cmdOpts.timeout, "timeout", 30, "Request timeout in seconds;;t")
 	cmd.StringVar(&cmdOpts.output, "output", "", "Output file for response;;o")
-	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file;;r`)
+	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file
+With request match:
+ filepath#keywords  - match request by keywords in .http file content,
+                      multiple keywords separated by comma ','
+                      on exists multiple requests, will prompt to select one. // TODO
+;;r`)
+	cmd.Var(&cmdOpts.httpVars, "var", `(.http file)HTTP request variables, allow multi. eg: "key=value";;V`)
+
 	cmd.BoolVar(&cmdOpts.down, "down", false, "Treat URL as download link;;O")
 	cmd.BoolVar(&cmdOpts.verbose, "verbose", false, "Verbose output;;v")
 	cmd.BoolVar(&cmdOpts.silent, "silent", false, "Silent mode;;s")
@@ -106,20 +125,27 @@ func runRequest(c *cflag.CFlags) error {
 
 // handleRawRequest 处理IDE .http格式文件
 func handleRawRequest(filename string) error {
-	if !fsutil.IsFile(filename) {
-		return fmt.Errorf("raw file not found: %s", filename)
-	}
-
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to read raw file: %v", err)
-	}
+	var keywords []string
+    if strings.Contains(filename, "#") {
+        // 处理 filepath#keywords 格式
+        parts := strings.SplitN(filename, "#", 2)
+        filename = parts[0]
+		keywords = strings.Split(parts[1], ",")
+    }
 
 	// 解析 .http 文件格式
-	request, err := parseHTTPFile(string(content))
+	hf, err := httpfile.ParseHTTPFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to parse HTTP file: %v", err)
 	}
+
+	request := hf.SearchOne(keywords...)
+	if request == nil {
+		return fmt.Errorf("no request found with keywords: %v", keywords)
+	}
+
+	// 应用变量替换
+	request.ApplyVars(cmdOpts.httpVars.Data())
 
 	if !cmdOpts.silent {
 		ccolor.Infoln("Parsed HTTP request from file:")
@@ -132,12 +158,42 @@ func handleRawRequest(filename string) error {
 			}
 		}
 		if request.Body != "" {
-			ccolor.Printf("  Body: %s\n", strutil.Substr(request.Body, 0, 100))
+			ccolor.Printf("  Body: %s\n", strutil.Substr(request.Body, 0, 256))
 		}
 	}
 
 	// 发送请求
 	return sendParsedRequest(request)
+}
+
+// sendParsedRequest 发送解析后的HTTP请求
+func sendParsedRequest(request *httpfile.HTTPRequest) error {
+	// 创建请求选项
+	optFns := []greq.OptionFn{}
+
+	if cmdOpts.timeout > 0 {
+		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
+	}
+
+	// 设置头部
+	for k, v := range request.Headers {
+		optFns = append(optFns, greq.WithHeader(k, v))
+	}
+
+	bodyData := []byte(request.Body)
+
+	// 设置主体数据（使用WithData而不是WithBody，因为greq库有bug）
+	if len(bodyData) > 0 {
+		optFns = append(optFns, greq.WithData(bodyData))
+	}
+
+	// 发送请求
+	resp, err := greq.SendDo(request.Method, request.URL, optFns...)
+	if err != nil {
+		return fmt.Errorf("request failed: %v", err)
+	}
+
+	return outputResponse(resp)
 }
 
 // handleDownload 处理文件下载
@@ -189,12 +245,9 @@ func handleDownload(url string) error {
 
 // handleNormalRequest 处理普通HTTP请求
 func handleNormalRequest(url string) error {
-	if !cmdOpts.silent {
-		ccolor.Infof("Requesting: %s %s\n", cmdOpts.method, url)
-	}
-
 	// 创建请求选项
 	optFns := []greq.OptionFn{}
+	reqMethod := strings.ToUpper(cmdOpts.method)
 
 	// 自定义User-Agent
 	if cmdOpts.agent != "" {
@@ -210,170 +263,60 @@ func handleNormalRequest(url string) error {
 		optFns = append(optFns, greq.WithHeader(k, v))
 	}
 
-	// 快速设置Content-Type: application/json
+	// 快速设置 Content-Type: application/json
 	if cmdOpts.json {
-		optFns = append(optFns, greq.WithContentType("application/json"))
+		optFns = append(optFns, greq.WithContentType(httpctype.JSON))
+		if httpreq.IsNoBodyMethod(reqMethod) {
+			reqMethod = "POST"
+		}
 	}
 
 	// 准备请求数据
 	var bodyData []byte
 	if cmdOpts.data != "" {
 		bodyData = []byte(cmdOpts.data)
+	} else if !cmdOpts.formData.IsEmpty() {
+		optFns = append(optFns, greq.WithContentType(httpctype.Form))
+		uvs := httpreq.MakeQuery(cmdOpts.formData.Data())
+		if len(uvs) > 0 {
+			bodyData = []byte(uvs.Encode())
+		}
+	}
+
+	if len(bodyData) > 0 {
+		optFns = append(optFns, greq.WithBody(bodyData))
+		if httpreq.IsNoBodyMethod(reqMethod) {
+			reqMethod = "POST"
+		}
+	}
+
+	if !cmdOpts.silent {
+		ccolor.Cyanf("Requesting URL: %s %s\n", reqMethod, url)
+	}
+
+	greq.Std().BeforeSend = func(req *http.Request) {
+		if !cmdOpts.verbose {
+			return
+		}
+		ccolor.Cyanln("Request Header:")
+		for k, v := range req.Header {
+			ccolor.Printf("  <green>%s</>: %s\n", k, strings.Join(v, ", "))
+		}
+		if len(bodyData) > 0 {
+			ccolor.Cyanln("Request   Body:")
+			fmt.Printf("  %s\n\n", string(bodyData))
+		}
 	}
 
 	// 发送请求
-	var resp *greq.Response
 	var err error
-
-	switch strings.ToUpper(cmdOpts.method) {
-	case "GET":
-		resp, err = greq.GetDo(url, optFns...)
-	case "POST":
-		if len(bodyData) > 0 {
-			optFns = append(optFns, greq.WithContentType("application/x-www-form-urlencoded"))
-			optFns = append(optFns, greq.WithBody(bodyData))
-		}
-		resp, err = greq.PostDo(url, bodyData, optFns...)
-	case "PUT":
-		if len(bodyData) > 0 {
-			optFns = append(optFns, greq.WithBody(bodyData))
-		}
-		resp, err = greq.PutDo(url, bodyData, optFns...)
-	case "DELETE":
-		resp, err = greq.DeleteDo(url, optFns...)
-	case "HEAD":
-		resp, err = greq.HeadDo(url, optFns...)
-	case "PATCH":
-		if len(bodyData) > 0 {
-			optFns = append(optFns, greq.WithBody(bodyData))
-		}
-		resp, err = greq.PatchDo(url, bodyData, optFns...)
-	default:
-		return fmt.Errorf("unsupported method: %s", cmdOpts.method)
-	}
-
+	var resp *greq.Response
+	resp, err = greq.SendDo(reqMethod, url, optFns...)
 	if err != nil {
 		return fmt.Errorf("request failed: %v", err)
 	}
 
 	// 输出响应
-	return outputResponse(resp)
-}
-
-// HTTPRequest 表示解析的HTTP请求
-type HTTPRequest struct {
-	Method  string
-	URL     string
-	Headers map[string]string
-	Body    string
-}
-
-// parseHTTPFile 解析IDE .http格式文件
-func parseHTTPFile(content string) (*HTTPRequest, error) {
-	lines := strings.Split(content, "\n")
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("empty file")
-	}
-
-	request := &HTTPRequest{
-		Headers: make(map[string]string),
-	}
-
-	// 解析第一行：METHOD URL
-	firstLine := strings.TrimSpace(lines[0])
-	parts := strings.Fields(firstLine)
-	if len(parts) < 2 {
-		return nil, fmt.Errorf("invalid request line: %s", firstLine)
-	}
-
-	request.Method = strings.ToUpper(parts[0])
-	request.URL = parts[1]
-
-	// 解析头部和主体
-	i := 1
-	for ; i < len(lines); i++ {
-		line := lines[i]
-		if line == "" {
-			break // 空行表示头部结束
-		}
-
-		// 解析头部
-		if strings.Contains(line, ":") {
-			parts := strings.SplitN(line, ":", 2)
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			request.Headers[key] = value
-		}
-	}
-
-	// 解析主体（如果有）
-	if i+1 < len(lines) {
-		bodyLines := lines[i+1:]
-		request.Body = strings.Join(bodyLines, "\n")
-		request.Body = strings.TrimSpace(request.Body)
-	}
-
-	// 处理变量替换
-	request.URL = replaceVariables(request.URL)
-	request.Body = replaceVariables(request.Body)
-	for k, v := range request.Headers {
-		request.Headers[k] = replaceVariables(v)
-	}
-
-	return request, nil
-}
-
-// sendParsedRequest 发送解析后的HTTP请求
-func sendParsedRequest(request *HTTPRequest) error {
-	// 创建请求选项
-	optFns := []greq.OptionFn{}
-
-	if cmdOpts.timeout > 0 {
-		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
-	}
-
-	// 设置头部
-	for k, v := range request.Headers {
-		optFns = append(optFns, greq.WithHeader(k, v))
-	}
-
-	// 发送请求
-	var resp *greq.Response
-	var err error
-
-	bodyData := []byte(request.Body)
-
-	// 设置主体数据（使用WithData而不是WithBody，因为greq库有bug）
-	if len(bodyData) > 0 {
-		optFns = append(optFns, greq.WithData(bodyData))
-	}
-
-	switch request.Method {
-	case "GET":
-		resp, err = greq.GetDo(request.URL, optFns...)
-	case "POST":
-		resp, err = greq.PostDo(request.URL, nil, optFns...)
-	case "PUT":
-		resp, err = greq.PutDo(request.URL, nil, optFns...)
-	case "DELETE":
-		resp, err = greq.DeleteDo(request.URL, optFns...)
-	case "HEAD":
-		resp, err = greq.HeadDo(request.URL, optFns...)
-	case "PATCH":
-		resp, err = greq.PatchDo(request.URL, nil, optFns...)
-	default:
-		return fmt.Errorf("unsupported method: %s", request.Method)
-	}
-
-	if err != nil {
-		return fmt.Errorf("request failed: %v", err)
-	}
-
-	// 处理下载
-	if cmdOpts.down {
-		return handleDownloadFromResponse(request.URL, resp)
-	}
-
 	return outputResponse(resp)
 }
 
@@ -395,20 +338,6 @@ func outputResponse(resp *greq.Response) error {
 	// 输出到标准输出
 	fmt.Print(resp.BodyString())
 	return nil
-}
-
-// replaceVariables 替换变量 ${var}
-func replaceVariables(text string) string {
-	re := regexp.MustCompile(`\$\{([^}]+)\}`)
-	return re.ReplaceAllStringFunc(text, func(match string) string {
-		varName := strings.TrimSpace(match[2 : len(match)-1])
-		// 优先从环境变量获取
-		if value := os.Getenv(varName); value != "" {
-			return value
-		}
-		// 可以从其他配置源获取
-		return match // 如果找不到变量，保持原样
-	})
 }
 
 // getFilenameFromURL 从URL获取文件名
