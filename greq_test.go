@@ -1,6 +1,7 @@
 package greq_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -55,4 +56,27 @@ func TestMust(t *testing.T) {
 	assert.NotPanics(t, func() {
 		greq.Must(greq.GetDo(testBaseURL + "/get"))
 	})
+}
+
+
+// DefaultRetryChecker 测试默认重试检查器
+func TestDefaultRetryChecker(t *testing.T) {
+	// 测试网络错误
+	assert.True(t, greq.DefaultRetryChecker(nil, fmt.Errorf("network error"), 0))
+
+	// 测试5xx服务器错误
+	resp500 := &greq.Response{Response: &http.Response{StatusCode: 500}}
+	assert.True(t, greq.DefaultRetryChecker(resp500, nil, 0))
+
+	// 测试429限流错误
+	resp429 := &greq.Response{Response: &http.Response{StatusCode: 429}}
+	assert.True(t, greq.DefaultRetryChecker(resp429, nil, 0))
+
+	// 测试2xx成功响应
+	resp200 := &greq.Response{Response: &http.Response{StatusCode: 200}}
+	assert.False(t, greq.DefaultRetryChecker(resp200, nil, 0))
+
+	// 测试4xx客户端错误
+	resp404 := &greq.Response{Response: &http.Response{StatusCode: 404}}
+	assert.False(t, greq.DefaultRetryChecker(resp404, nil, 0))
 }

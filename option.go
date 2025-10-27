@@ -9,7 +9,7 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 )
 
-// Options for a request build
+// Options for one request build
 type Options struct {
 	// url or path for current request
 	pathURL string
@@ -48,6 +48,11 @@ type Options struct {
 	Context context.Context
 	// Logger for request
 	Logger httpreq.ReqLogger
+
+	// Retry configuration
+	MaxRetries  int
+	RetryDelay  int
+	RetryChecker RetryChecker
 }
 
 // OptionFn for config request options
@@ -148,5 +153,35 @@ func WithData(data any) OptionFn {
 func WithTimeout(timeoutMs int) OptionFn {
 	return func(opt *Options) {
 		opt.Timeout = timeoutMs
+	}
+}
+
+// WithRetry set retry configuration for the request
+func WithRetry(maxRetries, retryDelay int, checker RetryChecker) OptionFn {
+	return func(opt *Options) {
+		opt.MaxRetries = maxRetries
+		opt.RetryDelay = retryDelay
+		opt.RetryChecker = checker
+	}
+}
+
+// WithMaxRetries set max retry times for the request
+func WithMaxRetries(maxRetries int) OptionFn {
+	return func(opt *Options) {
+		opt.MaxRetries = maxRetries
+	}
+}
+
+// WithRetryDelay set retry delay time in milliseconds for the request
+func WithRetryDelay(retryDelay int) OptionFn {
+	return func(opt *Options) {
+		opt.RetryDelay = retryDelay
+	}
+}
+
+// WithRetryChecker set custom retry checker function for the request
+func WithRetryChecker(checker RetryChecker) OptionFn {
+	return func(opt *Options) {
+		opt.RetryChecker = checker
 	}
 }

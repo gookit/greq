@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	gourl "net/url"
+	// gourl "net/url"
 	"strings"
 	"time"
 
@@ -22,30 +22,42 @@ type Client struct {
 	// core handler.
 	handler HandleFunc
 	middles []Middleware
-	// Vars template vars for URL, Header, Query, Body
-	//
-	// eg: http://example.com/{name}
-	Vars map[string]string
 
+	//
+	// default options for all requests
+	//
+
+	// Method default http method. default is GET
+	Method string
+	// Header default http header. default is nil
+	Header http.Header
+	// defalut content type
+	ContentType string
+	// BaseURL default base URL. default is ""
+	BaseURL string
+	// RespDecoder response data decoder.
+	//  - use for create Response instance. default is JSON decoder
+	RespDecoder RespDecoder
+
+	// ReqVars template vars for request: URL, Header, Query, Body
+	//
+	// eg: http://example.com/${name}
+	ReqVars map[string]string
 	// BeforeSend callback on each request
 	BeforeSend func(r *http.Request)
 	// AfterSend callback on each request
 	AfterSend AfterSendFn
 
 	//
-	// default options for all requests
+	// retry config
 	//
 
-	// http method eg: GET,POST
-	method  string
-	baseURL string
-	header  http.Header
-	// Query params data. allow: map[string]string, url.Values
-	query gourl.Values
-	// defalut content type
-	ContentType string
-	// response data decoder. use for create Response instance.
-	respDecoder RespDecoder
+	// MaxRetries max retry times. default is 0 (not retry)
+	MaxRetries int
+	// RetryDelay retry delay time (ms). default is 0 (no delay)
+	RetryDelay int
+	// RetryChecker retry condition checker. default is nil (not retry)
+	RetryChecker RetryChecker
 }
 
 // NewClient create a new http request client. alias of New()
@@ -55,15 +67,14 @@ func NewClient(baseURL ...string) *Client { return New(baseURL...) }
 func New(baseURL ...string) *Client {
 	h := &Client{
 		doer:   &http.Client{},
-		method: http.MethodGet,
-		header: make(http.Header),
-		query:  make(gourl.Values),
+		Method: http.MethodGet,
+		Header: make(http.Header),
 		// default use JSON decoder
-		respDecoder: jsonDecoder{},
+		RespDecoder: jsonDecoder{},
 	}
 
 	if len(baseURL) > 0 {
-		h.baseURL = baseURL[0]
+		h.BaseURL = baseURL[0]
 	}
 	return h
 }
@@ -72,23 +83,49 @@ func New(baseURL ...string) *Client {
 func (h *Client) Sub() *Client {
 	// copy HeaderM pairs into new Header map
 	headerCopy := make(http.Header)
-	for k, v := range h.header {
+	for k, v := range h.Header {
 		headerCopy[k] = v
 	}
 
 	return &Client{
 		doer:    h.doer,
-		method:  h.method,
-		baseURL: h.baseURL,
-		header:  headerCopy,
+		Method:  h.Method,
+		BaseURL: h.BaseURL,
+		Header:  headerCopy,
 		// query:    append([]any{}, s.query...),
-		respDecoder: h.respDecoder,
+		RespDecoder: h.RespDecoder,
 	}
 }
 
 //
 // region Config
 // ----------------------------
+
+// WithRetryConfig set retry configuration
+func (h *Client) WithRetryConfig(maxRetries, retryDelay int, checker RetryChecker) *Client {
+	h.MaxRetries = maxRetries
+	h.RetryDelay = retryDelay
+	h.RetryChecker = checker
+	return h
+}
+
+// WithMaxRetries set max retry times
+func (h *Client) WithMaxRetries(maxRetries int) *Client {
+	h.MaxRetries = maxRetries
+	return h
+}
+
+// WithRetryDelay set retry delay time in milliseconds
+func (h *Client) WithRetryDelay(retryDelay int) *Client {
+	h.RetryDelay = retryDelay
+	return h
+}
+
+// WithRetryChecker set custom retry checker function
+func (h *Client) WithRetryChecker(checker RetryChecker) *Client {
+	h.RetryChecker = checker
+	return h
+}
 
 // Doer custom set http request doer.
 // If a nil cli is given, the DefaultDoer will be used.
@@ -107,8 +144,20 @@ func (h *Client) Client(doer httpreq.Doer) *Client { return h.Doer(doer) }
 // HttpClient custom set http cli as request doer
 func (h *Client) HttpClient(hClient *http.Client) *Client { return h.Doer(hClient) }
 
-// Config custom config http request doer
-func (h *Client) Config(fn func(doer httpreq.Doer)) *Client {
+// Config custom config for client.
+//
+// Usage:
+//
+//	h.Config(func(h *Client) {
+//		h.Method = http.MethodPost
+//	})
+func (h *Client) Config(fn func(h *Client)) *Client {
+	fn(h)
+	return h
+}
+
+// ConfigDoer custom config http request doer
+func (h *Client) ConfigDoer(fn func(doer httpreq.Doer)) *Client {
 	fn(h.doer)
 	return h
 }
@@ -147,7 +196,7 @@ func (h *Client) Middlewares(middles ...Middleware) *Client {
 
 // WithRespDecoder for cli
 func (h *Client) WithRespDecoder(respDecoder RespDecoder) *Client {
-	h.respDecoder = respDecoder
+	h.RespDecoder = respDecoder
 	return h
 }
 
@@ -161,13 +210,13 @@ func (h *Client) OnBeforeSend(fn func(r *http.Request)) *Client {
 
 // DefaultHeader sets the http.Header value, it will be used for all requests.
 func (h *Client) DefaultHeader(key, value string) *Client {
-	h.header.Set(key, value)
+	h.Header.Set(key, value)
 	return h
 }
 
 // DefaultHeaders sets all the http.Header values, it will be used for all requests.
 func (h *Client) DefaultHeaders(headers http.Header) *Client {
-	h.header = headers
+	h.Header = headers
 	return h
 }
 
@@ -204,14 +253,14 @@ func (h *Client) DefaultBasicAuth(username, password string) *Client {
 // ------------ Method ------------
 
 // BaseURL set default base URL for all request
-func (h *Client) BaseURL(baseURL string) *Client {
-	h.baseURL = baseURL
+func (h *Client) WithBaseURL(baseURL string) *Client {
+	h.BaseURL = baseURL
 	return h
 }
 
 // DefaultMethod set default method name. it will be used when the Get()/Post() method is empty.
 func (h *Client) DefaultMethod(method string) *Client {
-	h.method = strings.ToUpper(method)
+	h.Method = strings.ToUpper(method)
 	return h
 }
 
@@ -417,13 +466,52 @@ func (h *Client) SendWithOpt(pathURL string, opt *Options) (*Response, error) {
 		return nil, err
 	}
 
-	// do send
+	// do send with request-level retry config if set
+	if opt.MaxRetries > 0 || opt.RetryDelay > 0 || opt.RetryChecker != nil {
+		return h.sendRequestWithRetryConfig(req, opt)
+	}
+
+	// do send with client-level retry config
 	return h.SendRequest(req)
+}
+
+// sendRequestWithRetryConfig send request with request-level retry configuration
+func (h *Client) sendRequestWithRetryConfig(req *http.Request, opt *Options) (*Response, error) {
+	// save original client retry config
+	originalMaxRetries := h.MaxRetries
+	originalRetryDelay := h.RetryDelay
+	originalRetryChecker := h.RetryChecker
+
+	// apply request-level retry config
+	if opt.MaxRetries > 0 {
+		h.MaxRetries = opt.MaxRetries
+	}
+	if opt.RetryDelay > 0 {
+		h.RetryDelay = opt.RetryDelay
+	}
+	if opt.RetryChecker != nil {
+		h.RetryChecker = opt.RetryChecker
+	}
+
+	// send request with retry
+	resp, err := h.SendRequest(req)
+
+	// restore original client retry config
+	h.MaxRetries = originalMaxRetries
+	h.RetryDelay = originalRetryDelay
+	h.RetryChecker = originalRetryChecker
+
+	return resp, err
 }
 
 // SendRequest send request
 func (h *Client) SendRequest(req *http.Request) (*Response, error) {
-    start := time.Now()
+	return h.sendRequestWithRetry(req, 0)
+}
+
+// sendRequestWithRetry send request with retry logic
+func (h *Client) sendRequestWithRetry(req *http.Request, attempt int) (*Response, error) {
+	start := time.Now()
 
 	// wrap middlewares, and will wrap http.Response to Response
 	h.wrapMiddlewares()
@@ -444,7 +532,40 @@ func (h *Client) SendRequest(req *http.Request) (*Response, error) {
 	if h.AfterSend != nil {
 		h.AfterSend(resp, err)
 	}
+
+	// check if retry is needed
+	if h.shouldRetry(resp, err, attempt) {
+		return h.retryRequest(req, attempt)
+	}
+
 	return resp, err
+}
+
+// shouldRetry check if request should be retried
+func (h *Client) shouldRetry(resp *Response, err error, attempt int) bool {
+	// check max retries
+	if h.MaxRetries <= 0 || attempt >= h.MaxRetries {
+		return false
+	}
+
+	// use custom retry checker if set, otherwise use default
+	checker := h.RetryChecker
+	if checker == nil {
+		checker = DefaultRetryChecker
+	}
+
+	return checker(resp, err, attempt)
+}
+
+// retryRequest perform retry with delay
+func (h *Client) retryRequest(req *http.Request, attempt int) (*Response, error) {
+	// apply retry delay if set
+	if h.RetryDelay > 0 {
+		time.Sleep(time.Duration(h.RetryDelay) * time.Millisecond)
+	}
+
+	// increment attempt count and retry
+	return h.sendRequestWithRetry(req, attempt+1)
 }
 
 //
@@ -458,11 +579,11 @@ func (h *Client) NewRequest(method, url string, optFns ...OptionFn) (*http.Reque
 
 func (h *Client) buildFullURL(url string) string {
 	fullURL := url
-	if len(h.baseURL) > 0 {
+	if len(h.BaseURL) > 0 {
 		if !strings.HasPrefix(url, "http") {
-			fullURL = h.baseURL + url
+			fullURL = h.BaseURL + url
 		} else if len(url) == 0 {
-			fullURL = h.baseURL
+			fullURL = h.BaseURL
 		}
 	}
 	return fullURL
@@ -479,7 +600,7 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	}
 
 	// append Query params
-	qm := httpreq.MergeURLValues(h.query, opt.Query)
+	qm := opt.Query
 	if len(qm) > 0 {
 		fullURL = httpreq.AppendQueryToURLString(fullURL, qm)
 	}
@@ -498,7 +619,7 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	}
 
 	cType := strutil.Valid(opt.ContentType, opt.HeaderM[httpctype.Key], h.ContentType)
-	method := strings.ToUpper(strutil.OrElse(opt.Method, h.method))
+	method := strings.ToUpper(strutil.OrElse(opt.Method, h.Method))
 	allowBody := httpreq.IsNoBodyMethod(method) == false
 
 	// check opt.Data
@@ -523,7 +644,7 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	}
 
 	// copy and set headers
-	httpreq.SetHeaders(req, h.header, opt.Header)
+	httpreq.SetHeaders(req, h.Header, opt.Header)
 	if len(opt.HeaderM) > 0 {
 		httpreq.SetHeaderMap(req, opt.HeaderM)
 	}

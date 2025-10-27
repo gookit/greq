@@ -15,6 +15,33 @@ type HandleFunc func(r *http.Request) (*Response, error)
 // AfterSendFn callback func
 type AfterSendFn func(resp *Response, err error)
 
+// RetryChecker function type for checking if a request should be retried
+type RetryChecker func(resp *Response, err error, attempt int) bool
+
+// DefaultRetryChecker is the default retry condition checker
+// It retries on:
+// - Network errors (err != nil)
+// - 5xx server errors
+// - 429 Too Many Requests
+func DefaultRetryChecker(resp *Response, err error, attempt int) bool {
+	// Retry on network errors
+	if err != nil {
+		return true
+	}
+	
+	// Retry on server errors (5xx)
+	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
+		return true
+	}
+	
+	// Retry on rate limiting (429)
+	if resp.StatusCode == 429 {
+		return true
+	}
+	
+	return false
+}
+
 // RequestCreator interface
 type RequestCreator interface {
 	NewRequest(method, target string, body io.Reader) *http.Request
