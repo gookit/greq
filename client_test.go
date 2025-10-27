@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gookit/goutil/dump"
@@ -121,4 +124,35 @@ func TestClient_String(t *testing.T) {
 		String()
 
 	fmt.Println(str)
+}
+
+func TestClient_Download(t *testing.T) {
+	// 创建临时目录
+	tempDir, err := os.MkdirTemp("", "greq_download_test")
+	assert.NoErr(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// 创建客户端
+	client := greq.New()
+
+	// 测试下载成功
+	savePath := filepath.Join(tempDir, "test_down.json")
+	err = client.Download(testBaseURL + "/json", savePath)
+	assert.NoErr(t, err)
+
+	// 验证文件内容
+	content, err := os.ReadFile(savePath)
+	assert.NoErr(t, err)
+	assert.Equal(t, `{"message": "test content"}`, string(content))
+
+	// 测试下载失败（404）
+	ts404 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts404.Close()
+
+	savePath404 := filepath.Join(tempDir, "not_found.json")
+	err = client.Download(ts404.URL, savePath404)
+	assert.Err(t, err)
+	assert.Contains(t, err.Error(), "下载失败，状态码: 404")
 }

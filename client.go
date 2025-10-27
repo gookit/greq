@@ -2,6 +2,7 @@ package greq
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	gourl "net/url"
@@ -540,4 +541,22 @@ func (h *Client) String() string {
 		return ""
 	}
 	return httpreq.RequestToString(r)
+}
+
+// Download download file from url and save to savePath.
+func (h *Client) Download(url, savePath string, optFns ...OptionFn) error {
+	// 发送GET请求
+	resp, err := h.Send(http.MethodGet, url, optFns...)
+	if err != nil {
+		return err
+	}
+	defer resp.QuietCloseBody()
+
+	// 检查响应状态
+	if resp.IsFail() {
+		return fmt.Errorf("Download failed, status code: %d", resp.StatusCode)
+	}
+
+	// 使用Response的SaveFile方法保存文件
+	return resp.SaveFile(savePath)
 }
