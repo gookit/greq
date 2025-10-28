@@ -26,6 +26,7 @@ var benchOpts = struct {
 	headers cflag.KVString
 	json bool
 	method string
+	progress bool // 是否显示进度条
 }{
 	headers: cflag.KVString{Sep: ":"},
 }
@@ -53,9 +54,10 @@ Allow use <green>@filename</> to read data from file.
 	cmd.StringVar(&benchOpts.output,  "output", "stdout", `Output file to write the results to.
 If not specified, results are written to stdout.;;o`)
 	cmd.Var(&benchOpts.headers,  "header", `Custom HTTP header. Examples: -H "foo: bar";;H`)
-	cmd.IntVar(&benchOpts.timeout,  "timeout", 0, "Timeout for each request. Default to infinite.;;t")
+	cmd.IntVar(&benchOpts.timeout,  "timeout", 10, "Timeout(seconds) for each request. Default to infinite.;;t")
 	cmd.StringVar(&benchOpts.method,  "method", "GET", "HTTP method;;m")
 	cmd.BoolVar(&benchOpts.json,  "json", false, "Quick add Content-Type: application/json header.")
+	cmd.BoolVar(&benchOpts.progress,  "progress", true, "Show progress bar.")
 
 	cmd.AddArg("url", "the URL to benchmark test", true, nil)
 
@@ -83,7 +85,6 @@ func runBenchmark(c *cflag.CFlags) error {
 		return fmt.Errorf("URL is required")
 	}
 
-	ccolor.Magentaf("Benchmark URL: %s\n", url)
 	var duration time.Duration
 	if benchOpts.duration != "" {
 		var err error
@@ -131,14 +132,22 @@ func runBenchmark(c *cflag.CFlags) error {
 		hb.SetQPSLimit(benchOpts.qpsLimit)
 	}
 
+	ccolor.Cyanf("Benchmark URL: %s\n", url)
 	ccolor.Infoln("Configuration:")
-	ccolor.Printf("  Method=%s, concurrency=%d, number=%d, duration=%v\n",
+	ccolor.Printf("  Method=%s, Concurrency=%d, Number=%d, Duration=%v\n",
 		benchOpts.method, benchOpts.concurrency, benchOpts.number, duration)
-	ccolor.Printf("  The QPS   Limit: %d\n", benchOpts.qpsLimit)
+	ccolor.Printf("  The  QPS  Limit: %d\n", benchOpts.qpsLimit)
 	ccolor.Printf("  Request Timeout: %d seconds\n", benchOpts.timeout)
 
+	// 显示简单的 cli ascii 进度条
+	if benchOpts.progress {
+		fmt.Println()
+		hb.SetShowProgress(true)
+	} else {
+		ccolor.Infof("Benchmarking ... please wait.\n")
+	}
+
 	// 执行测试
-	ccolor.Infof("Benchmarking %s (be patient)\n", url)
 	result, err := hb.Run()
 	if err != nil {
 		return fmt.Errorf("benchmark failed: %v", err)

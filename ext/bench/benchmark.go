@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gookit/goutil/strutil"
+	"github.com/gookit/goutil/x/ccolor"
 	"github.com/gookit/greq"
 )
 
@@ -39,6 +40,8 @@ type HTTPBench struct {
 	statusCodes map[int]int64
 	// 响应时间统计
 	respTimes []time.Duration
+	showProgress bool // 是否显示进度条
+	progressOK   bool // 进度是否已经完成
 
 	// 客户端
 	client *greq.Client
@@ -128,6 +131,12 @@ func (b *HTTPBench) SetDuration(duration time.Duration) *HTTPBench {
 	return b
 }
 
+// SetShowProgress 设置是否显示进度条
+func (b *HTTPBench) SetShowProgress(show bool) *HTTPBench {
+	b.showProgress = show
+	return b
+}
+
 // initClient 初始化HTTP客户端
 func (b *HTTPBench) initClient() {
 	b.client = greq.New()
@@ -142,6 +151,62 @@ func (b *HTTPBench) initClient() {
 	for k, v := range b.Headers {
 		b.client.DefaultHeader(k, v)
 	}
+}
+
+// ShowProgressBar 显示简单的 cli ascii 进度条
+func (b *HTTPBench) showProgressBar() {
+	if b.totalReqs == 0 || b.progressOK {
+		return
+	}
+
+	duration := time.Since(b.startTime)
+	completed := float64(b.totalReqs)
+	total := float64(b.Number)
+
+	// 如果设置了测试时长，则使用时间进度
+	if b.Duration > 0 {
+		total = float64(b.Duration.Seconds())
+		completed = float64(duration.Seconds())
+	}
+
+	// 计算进度百分比
+	progress := completed / total
+	if progress > 1.0 {
+		progress = 1.0
+	}
+	b.progressOK = progress >= 1.0
+
+	// 进度条长度
+	barWidth := 50
+	// 构建进度条
+	bar := buildProgressBar(progress, barWidth)
+
+	// 显示进度信息
+	percent := int(progress * 100)
+	ccolor.Printf("\r<green1>Progress</>: %s %d%% | Requests: %d/%d | Duration: %s",
+		bar, percent, b.totalReqs, b.Number, duration.Round(time.Second))
+
+	// 如果测试完成，换行
+	if progress >= 1.0 {
+		fmt.Println()
+	}
+}
+
+// buildProgressBar 构建进度条
+func buildProgressBar(progress float64, barWidth int) string {
+	filled := int(float64(barWidth) * progress)
+	empty := barWidth - filled
+
+	bar := "["
+	for i := 0; i < filled; i++ {
+		bar += "="
+	}
+	for i := 0; i < empty; i++ {
+		bar += " "
+	}
+	bar += "]"
+
+	return bar
 }
 
 // Run 执行基准测试
@@ -173,6 +238,20 @@ func (b *HTTPBench) Run() (*BenchResult, error) {
 	resultCh := make(chan *benchReqResult, b.Concurrency*10)
 	go b.collectResults(resultCh)
 
+	// 启动进度显示协程
+	progressTicker := time.NewTicker(100 * time.Millisecond)
+	defer progressTicker.Stop()
+	go func() {
+		for {
+			select {
+			case <-progressTicker.C:
+				b.showProgressBar()
+			case <-b.ctx.Done():
+				return
+			}
+		}
+	}()
+
 	// 启动工作协程
 	for i := 0; i < b.Concurrency; i++ {
 		wg.Add(1)
@@ -189,6 +268,8 @@ func (b *HTTPBench) Run() (*BenchResult, error) {
 	// 等待统计协程完成
 	time.Sleep(100 * time.Millisecond)
 
+	// 显示最终进度
+	b.showProgressBar()
 	b.endTime = time.Now()
 
 	return b.generateResult(), nil
@@ -351,9 +432,12 @@ func (r *BenchResult) String() string {
 	// 设置 buf 初始容量
 	buf := make([]byte, 0, 256)
 
+	// 计算成功请求比例
+	successRatio := float64(r.SuccessReqs) / float64(r.TotalReqs)
+
 	// buf = append(buf, fmt.Sprintf("Benchmarking %s\n", r.URL)...)
 	buf = append(buf, fmt.Sprintf("Total      requests: %d\n", r.TotalReqs)...)
-	buf = append(buf, fmt.Sprintf("Successful requests: <green>%d</>\n", r.SuccessReqs)...)
+	buf = append(buf, fmt.Sprintf("Successful requests: <green>%d</>(%.2f%%)\n", r.SuccessReqs, successRatio*100)...)
 	buf = append(buf, fmt.Sprintf("Failed     requests: <red>%d</>\n", r.FailReqs)...)
 	buf = append(buf, fmt.Sprintf("Duration       time: %s\n", r.Duration)...)
 	buf = append(buf, fmt.Sprintf("Requests per second: %.2f\n", r.ReqsPerSecond)...)
