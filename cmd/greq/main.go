@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,6 +35,7 @@ var cmdOpts = struct {
 	insecure bool
 	json     bool // quick set Content-Type: application/json
 	agent    string // custom user-agent
+	headOnly bool // show response headers only
 }{
 	headers:  cflag.KVString{Sep: ":"},
 	formData: cflag.KVString{Sep: "="},
@@ -73,6 +76,7 @@ With request match:
 	cmd.BoolVar(&cmdOpts.follow, "follow", false, "Follow redirects;;L")
 	cmd.BoolVar(&cmdOpts.insecure, "insecure", false, "Allow insecure SSL connections;;k")
 	cmd.BoolVar(&cmdOpts.json, "json", false, "Quick set Content-Type: application/json")
+	cmd.BoolVar(&cmdOpts.headOnly, "head", false, "Show response headers only;;I")
 
 	cmd.AddArg("url", "the URL to request", false, nil)
 
@@ -196,43 +200,87 @@ func sendParsedRequest(request *httpfile.HTTPRequest) error {
 	return outputResponse(resp)
 }
 
-// handleDownload 处理文件下载
+// handleDownload 处理下载请求
 func handleDownload(url string) error {
-	if !cmdOpts.silent {
-		ccolor.Infof("Downloading from: %s\n", url)
-	}
-
 	// 创建请求选项
 	optFns := []greq.OptionFn{}
+
 	if cmdOpts.timeout > 0 {
 		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
 	}
 
-	// 发送GET请求
+	// 设置请求头
+	for k, v := range cmdOpts.headers.Data() {
+		optFns = append(optFns, greq.WithHeader(k, v))
+	}
+
+	// 获取文件名
+	filename := cmdOpts.output
+	if filename == "" {
+		// 临时使用空响应，稍后会用HEAD响应替换
+		filename = getFilenameFromURL(url, nil)
+	}
+
+	// 首先发送HEAD请求获取文件信息
+	headResp, err := greq.HeadDo(url, optFns...)
+	if err != nil {
+		return fmt.Errorf("head request failed: %v", err)
+	}
+
+	// 获取文件大小
+	var totalSize int64
+	contentLength := headResp.Header.Get("Content-Length")
+	if contentLength != "" {
+		if size, err := strconv.ParseInt(contentLength, 10, 64); err == nil {
+			totalSize = size
+		}
+	}
+
+	// 从HEAD响应更新文件名
+	if cmdOpts.output == "" {
+		filename = getFilenameFromURL(url, headResp)
+	}
+
+	// 检查本地文件是否存在，实现断点续传
+	var startOffset int64
+	fileInfo, err := os.Stat(filename)
+	if err == nil && fileInfo.Size() > 0 {
+		startOffset = fileInfo.Size()
+		if startOffset >= totalSize && totalSize > 0 {
+			if !cmdOpts.silent {
+				ccolor.Greenf("File already downloaded completely: %s (%s)\n", filename, formatBytes(int(totalSize)))
+			}
+			return nil
+		}
+		if !cmdOpts.silent {
+			ccolor.Yellowf("Resuming download from: %s (%s/%s)\n", filename, formatBytes(int(startOffset)), formatBytes(int(totalSize)))
+		}
+	}
+
+	// 如果有断点，添加Range头
+	if startOffset > 0 {
+		optFns = append(optFns, greq.WithHeader("Range", fmt.Sprintf("bytes=%d-", startOffset)))
+	}
+
+	if !cmdOpts.silent {
+		ccolor.Cyanf("Downloading to: %s\n", filename)
+		if totalSize > 0 {
+			ccolor.Cyanf("File size: %s\n", formatBytes(int(totalSize)))
+		}
+	}
+
+	// 发送GET请求下载文件
 	resp, err := greq.GetDo(url, optFns...)
+	if err != nil {
+		return fmt.Errorf("download request failed: %v", err)
+	}
+
+	// 使用带进度显示的下载
+	err = downloadWithProgress(resp, filename, totalSize, startOffset)
 	if err != nil {
 		return fmt.Errorf("download failed: %v", err)
 	}
 
-	if resp.IsFail() {
-		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
-	}
-
-	// 获取文件名
-	filename := getFilenameFromURL(url, resp)
-	if cmdOpts.output != "" {
-		filename = cmdOpts.output
-	}
-
-	// 写入文件
-	n, err := resp.SaveFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to save file: %v", err)
-	}
-
-	if !cmdOpts.silent {
-		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(n))
-	}
 	return nil
 }
 
@@ -316,12 +364,17 @@ func handleNormalRequest(url string) error {
 
 // outputResponse 输出响应结果
 func outputResponse(resp *greq.Response) error {
-	if cmdOpts.verbose {
+	if cmdOpts.verbose || cmdOpts.headOnly {
 		ccolor.Infoln("Response Headers:")
 		for k, v := range resp.Header {
 			ccolor.Printf("  %s: %s\n", k, strings.Join(v, ", "))
 		}
 		ccolor.Println()
+
+		// 只显示响应头
+		if cmdOpts.headOnly {
+			return nil
+		}
 	}
 
 	// 输出到文件或标准输出
@@ -337,9 +390,11 @@ func outputResponse(resp *greq.Response) error {
 // getFilenameFromURL 从URL获取文件名
 func getFilenameFromURL(url string, resp *greq.Response) string {
 	// 尝试从Content-Disposition获取文件名
-	disposition := resp.Header.Get("Content-Disposition")
-	if filename := requtil.FilenameFromDisposition(disposition); filename != "" {
-		return filename
+	if resp != nil {
+		disposition := resp.Header.Get("Content-Disposition")
+		if filename := requtil.FilenameFromDisposition(disposition); filename != "" {
+			return filename
+		}
 	}
 
 	// 从URL路径获取文件名
@@ -377,6 +432,131 @@ func handleDownloadFromResponse(url string, resp *greq.Response) error {
 		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(n))
 	}
 	return nil
+}
+
+// downloadWithProgress 带进度显示的下载
+func downloadWithProgress(resp *greq.Response, filename string, totalSize int64, startOffset int64) error {
+	// 创建或打开文件
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return fmt.Errorf("open file failed: %v", err)
+	}
+	defer file.Close()
+
+	// 获取响应体
+	bodyReader := resp.Body
+	if bodyReader == nil {
+		return fmt.Errorf("response body is nil")
+	}
+	defer resp.CloseBody()
+
+	// 创建缓冲区
+	buffer := make([]byte, 32*1024) // 32KB 缓冲区
+	var downloaded int64 = startOffset
+
+	// 进度显示定时器
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+
+	done := make(chan error, 1)
+
+	// 启动进度显示协程
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				showDownloadProgress(downloaded, totalSize, time.Now())
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	// 读取并写入数据
+	for {
+		n, err := bodyReader.Read(buffer)
+		if n > 0 {
+			_, writeErr := file.Write(buffer[:n])
+			if writeErr != nil {
+				done <- writeErr
+				return writeErr
+			}
+			downloaded += int64(n)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			done <- err
+			return err
+		}
+	}
+
+	// 完成下载
+	done <- nil
+	close(done)
+
+	// 显示最终进度
+	showDownloadProgress(downloaded, totalSize, time.Now())
+	fmt.Println() // 换行
+
+	if !cmdOpts.silent {
+		ccolor.Greenf("Download completed: %s (%s)\n", filename, formatBytes(int(downloaded)))
+	}
+
+	return nil
+}
+
+// showDownloadProgress 显示下载进度
+func showDownloadProgress(downloaded int64, totalSize int64, startTime time.Time) {
+	if totalSize <= 0 {
+		// 未知总大小，只显示已下载量
+		fmt.Printf("\rDownloaded: %s", formatBytes(int(downloaded)))
+		return
+	}
+
+	percentage := float64(downloaded) / float64(totalSize) * 100
+	if percentage > 100 {
+		percentage = 100
+	}
+
+	// 计算速度（字节/秒）
+	elapsed := time.Since(startTime).Seconds()
+	if elapsed <= 0 {
+		elapsed = 1 // 避免除零
+	}
+	speed := float64(downloaded) / elapsed
+
+	// 计算剩余时间
+	if speed > 0 && downloaded < totalSize {
+		remaining := float64(totalSize-downloaded) / speed
+		fmt.Printf("\r[%-30s] %.1f%% %s/s %s",
+			strings.Repeat("█", int(percentage/100*30)) + strings.Repeat("░", 30-int(percentage/100*30)),
+			percentage,
+			formatBytes(int(speed)),
+			formatDuration(time.Duration(int(remaining))*time.Second))
+	} else {
+		fmt.Printf("\r[%-30s] %.1f%% %s/s",
+			strings.Repeat("█", int(percentage/100*30)) + strings.Repeat("░", 30-int(percentage/100*30)),
+			percentage,
+			formatBytes(int(speed)))
+	}
+}
+
+// formatDuration 格式化时间间隔
+func formatDuration(d time.Duration) string {
+	seconds := int(d.Seconds())
+	if seconds < 0 {
+		seconds = 0
+	}
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+	secs := seconds % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, secs)
+	}
+	return fmt.Sprintf("%02d:%02d", minutes, secs)
 }
 
 // formatBytes 格式化字节大小
