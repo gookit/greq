@@ -16,33 +16,6 @@ import (
 	"github.com/gookit/greq/ext/httpfile"
 )
 
-// NewTransport create new http transport
-func NewTransport(onCreate func(ht *http.Transport)) *http.Transport {
-	// Customize the Transport to have larger connection pool.
-	transport := &http.Transport{
-		// Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		// ForceAttemptHTTP2:     true,
-		MaxIdleConns:          500,
-		MaxConnsPerHost:       200,
-		MaxIdleConnsPerHost:   100,
-		IdleConnTimeout:       60 * time.Second,
-		TLSHandshakeTimeout:   1 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-
-	if onCreate != nil {
-		onCreate(transport)
-	}
-	return transport
-}
-
 // Client is an HTTP Request builder and sender.
 type Client struct {
 	doer httpreq.Doer
@@ -76,7 +49,7 @@ type Client struct {
 	ReqVars map[string]string
 	// BeforeSend callback on each request, can return error to deny request.
 	BeforeSend func(r *http.Request) error
-	// AfterSend callback on each request
+	// AfterSend callback on each request, can use for record request and response
 	AfterSend AfterSendFn
 
 	//
@@ -312,7 +285,7 @@ func (h *Client) DefaultBasicAuth(username, password string) *Client {
 
 // ------------ Method ------------
 
-// BaseURL set default base URL for all request
+// WithBaseURL set default base URL for all request
 func (h *Client) WithBaseURL(baseURL string) *Client {
 	h.BaseURL = baseURL
 	return h
@@ -738,22 +711,4 @@ func (h *Client) String() string {
 		return ""
 	}
 	return httpreq.RequestToString(r)
-}
-
-// Download download file from url and save to savePath.
-func (h *Client) Download(url, savePath string, optFns ...OptionFn) (n int, err error) {
-	// 发送GET请求
-	resp, err := h.Send(http.MethodGet, url, optFns...)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.QuietCloseBody()
-
-	// 检查响应状态
-	if resp.IsFail() {
-		return 0, fmt.Errorf("Download failed, status code: %d", resp.StatusCode)
-	}
-
-	// 使用Response的SaveFile方法保存文件
-	return resp.SaveFile(savePath)
 }

@@ -2,8 +2,11 @@
 package greq
 
 import (
+	"crypto/tls"
 	"io"
+	"net"
 	"net/http"
+	"time"
 )
 
 // DefaultDoer for request.
@@ -56,4 +59,31 @@ func Must(w *Response, err error) *Response {
 		panic(err)
 	}
 	return w
+}
+
+// NewTransport create new http transport
+func NewTransport(onCreate func(ht *http.Transport)) *http.Transport {
+	// Customize the Transport to have larger connection pool.
+	transport := &http.Transport{
+		// Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		// ForceAttemptHTTP2:     true,
+		MaxIdleConns:          500,
+		MaxConnsPerHost:       200,
+		MaxIdleConnsPerHost:   100,
+		IdleConnTimeout:       60 * time.Second,
+		TLSHandshakeTimeout:   1 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	if onCreate != nil {
+		onCreate(transport)
+	}
+	return transport
 }
