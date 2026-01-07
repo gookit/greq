@@ -16,6 +16,33 @@ import (
 	"github.com/gookit/greq/ext/httpfile"
 )
 
+// NewTransport create new http transport
+func NewTransport(onCreate func(ht *http.Transport)) *http.Transport {
+	// Customize the Transport to have larger connection pool.
+	transport := &http.Transport{
+		// Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		// ForceAttemptHTTP2:     true,
+		MaxIdleConns:          500,
+		MaxConnsPerHost:       200,
+		MaxIdleConnsPerHost:   100,
+		IdleConnTimeout:       60 * time.Second,
+		TLSHandshakeTimeout:   1 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	if onCreate != nil {
+		onCreate(transport)
+	}
+	return transport
+}
+
 // Client is an HTTP Request builder and sender.
 type Client struct {
 	doer httpreq.Doer
@@ -35,6 +62,10 @@ type Client struct {
 	ContentType string
 	// BaseURL default base URL. default is ""
 	BaseURL string
+	// Timeout default timeout(ms) for each request. default 10s
+	//
+	//  - 0: not limit
+	Timeout int
 	// RespDecoder response data decoder.
 	//  - use for create Response instance. default is JSON decoder
 	RespDecoder RespDecoder
@@ -65,8 +96,18 @@ func NewClient(baseURL ...string) *Client { return New(baseURL...) }
 
 // New create a new http request client.
 func New(baseURL ...string) *Client {
+	timeoutMs := 10000 // default 10s
+	timeout := 10 * time.Second
 	h := &Client{
-		doer:   &http.Client{},
+		doer: &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				MaxIdleConns:        200,
+				MaxIdleConnsPerHost: 50,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
+		Timeout: timeoutMs,
 		Method: http.MethodGet,
 		Header: make(http.Header),
 		// default use JSON decoder
@@ -176,6 +217,25 @@ func (h *Client) ConfigHClient(fn func(hClient *http.Client)) *Client {
 		panic("the doer is not an *http.Client")
 	}
 
+	return h
+}
+
+// SetMaxIdleConns Set the maximum number of idle connections.
+func (h *Client) SetMaxIdleConns(maxIdleConns, maxIdleConnsPerHost int) *Client {
+	if hc, ok := h.doer.(*http.Client); ok {
+		transport := hc.Transport.(*http.Transport)
+		transport.MaxIdleConns = maxIdleConns
+		transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
+	}
+	return h
+}
+
+// DefaultTimeout set default timeout in milliseconds for requests. default is 0 (infinite)
+func (h *Client) DefaultTimeout(timeoutMs int) *Client {
+	h.Timeout = timeoutMs
+	if hc, ok := h.doer.(*http.Client); ok {
+		hc.Timeout = time.Duration(timeoutMs) * time.Millisecond
+	}
 	return h
 }
 
