@@ -394,6 +394,20 @@ func (h *Client) DeleteDo(pathURL string, optFns ...OptionFn) (*Response, error)
 	return h.SendWithOpt(pathURL, NewOpt2(optFns, http.MethodDelete))
 }
 
+// Download remote file from url and save to savePath.
+func (h *Client) Download(url, savePath string, optFns ...OptionFn) (int, error) {
+	resp, err := h.Send(http.MethodGet, url, optFns...)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.IsFail() {
+		resp.QuietCloseBody()
+		return 0, fmt.Errorf("download failed, status code: %d", resp.StatusCode)
+	}
+	return resp.SaveFile(savePath)
+}
+
 //
 // region Headers
 // ----------------------------
