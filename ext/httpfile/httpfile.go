@@ -74,7 +74,7 @@ func (hf *HTTPFile) SearchOne(keywords ...string) *HTTPRequest {
 	return nil
 }
 
-// FindByName find a HTTP request by name.
+// FindByName find an HTTP request by name.
 func (hf *HTTPFile) FindByName(name string) *HTTPRequest {
 	for _, req := range hf.Requests {
 		if req.Name == name {
@@ -103,9 +103,9 @@ func (hf *HTTPFile) Parse() error {
 
 	rawLines := strings.Split(hf.Contents, "\n")
 	var currentReq *HTTPRequest
-	var inHeaders bool // 标记是否在解析头部
-	var inBody bool    // 标记是否在解析请求体
-	var hasBodyStart bool // 标记是否已经遇到请求体开始
+	var inHeaders bool          // 标记是否在解析头部
+	var inBody bool             // 标记是否在解析请求体
+	var hasBodyStart bool       // 标记是否已经遇到请求体开始
 	var globalComments []string // 存储全局注释
 
 	for _, line := range rawLines {
@@ -188,12 +188,10 @@ func (hf *HTTPFile) Parse() error {
 		}
 
 		// 处理头部行（Key: Value）
-		if inHeaders {
-			if colonIndex := strings.Index(trimmedLine, ":"); colonIndex > 0 {
-				key := strings.TrimSpace(trimmedLine[:colonIndex])
-				value := strings.TrimSpace(trimmedLine[colonIndex+1:])
-				currentReq.Headers[key] = value
-			}
+		if colonIndex := strings.Index(trimmedLine, ":"); colonIndex > 0 {
+			key := strings.TrimSpace(trimmedLine[:colonIndex])
+			value := strings.TrimSpace(trimmedLine[colonIndex+1:])
+			currentReq.Headers[key] = value
 		}
 	}
 
