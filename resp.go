@@ -12,6 +12,7 @@ import (
 
 // Response is a http.Response wrapper, add some useful methods.
 type Response struct {
+	// raw http.Response
 	*http.Response
 	// CostTime for a request-response. unit: ms
 	CostTime int64
@@ -145,17 +146,15 @@ func (r *Response) String() string {
 	return buf.String()
 }
 
-// Result get the raw http.Response
-func (r *Response) Result() *http.Response {
-	return r.Response
-}
-
 // CloseBody close resp body
 func (r *Response) CloseBody() error {
-	return r.Body.Close()
+	if r.Body != nil {
+		return r.Body.Close()
+	}
+	return nil
 }
 
 // QuietCloseBody close resp body, ignore error
 func (r *Response) QuietCloseBody() {
-	_ = r.Body.Close()
+	_ = r.CloseBody()
 }

@@ -16,6 +16,8 @@ func TestResponse_String(t *testing.T) {
 	assert.NoErr(t, err)
 	assert.True(t, resp.IsOK())
 	assert.False(t, resp.IsFail())
+	assert.NotEmpty(t, resp.Response)
 
 	fmt.Print(resp.String())
+	resp.QuietCloseBody()
 }
