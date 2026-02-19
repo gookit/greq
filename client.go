@@ -663,12 +663,15 @@ func (h *Client) NewRequest(method, url string, optFns ...OptionFn) (*http.Reque
 
 func (h *Client) buildFullURL(url string) string {
 	fullURL := url
+	hasScheme := strings.HasPrefix(url, "http")
 	if len(h.BaseURL) > 0 {
-		if !strings.HasPrefix(url, "http") {
+		if !hasScheme {
 			fullURL = h.BaseURL + url
 		} else if len(url) == 0 {
 			fullURL = h.BaseURL
 		}
+	} else if !hasScheme {
+		fullURL = "https://" + url
 	}
 	return fullURL
 }

@@ -22,6 +22,7 @@
 - Built-In: fom, json request body provider
 - Built-In: xml, json response body decoder
 - Support for directly parsing and sending `.http` file format requests
+- Supports download and upload file(s)
 - Built-in command tool:
   - `cmd/greq` Lightweight HTTP request tool similar to curl and supports the IDEA `.http` file format
   - `cmd/gbench` Lightweight HTTP request load testing tool similar to `ab` testing tool

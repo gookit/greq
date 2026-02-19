@@ -20,6 +20,7 @@
 - 支持请求重试功能，可以自定义重试次数、间隔和重试检查器
   - 默认重试检查器 `DefaultRetryChecker` ，支持对网络错误、5xx服务器错误和429限流错误进行重试
 - 支持直接解析并发送 `.http` 文件格式请求
+- 支持上传下载文件
 - 内置命令工具
   - `cmd/greq` 一个简单的 HTTP 请求工具，类似curl同时支持IDEA `http` 文件格式
   - `cmd/gbench` 一个简单的 HTTP 请求压力测试工具，类似 `ab` 测试工具
@@ -237,4 +238,3 @@ gbench -c 10 -n 100 -d '{"name": "inhere"}' https://httpbin.org/post
 - https://github.com/zhshch2002/goreq
 - https://github.com/go-resty/resty
 - https://github.com/monaco-io/request
-
