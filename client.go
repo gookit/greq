@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	// gourl "net/url"
 	"strings"
 	"time"
 
@@ -69,21 +69,23 @@ func NewClient(baseURL ...string) *Client { return New(baseURL...) }
 
 // New create a new http request client.
 func New(baseURL ...string) *Client {
-	timeoutMs := 10000 // default 10s
-	timeout := 10 * time.Second
 	h := &Client{
 		doer: &http.Client{
-			Timeout: timeout,
 			Transport: &http.Transport{
-				MaxIdleConns:        200,
-				MaxIdleConnsPerHost: 50,
-				IdleConnTimeout:     90 * time.Second,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				MaxIdleConns:          200,
+				MaxIdleConnsPerHost:   50,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
 			},
 		},
-		Timeout: timeoutMs,
-		Method: http.MethodGet,
-		Header: make(http.Header),
-		// default use JSON decoder
+		Timeout:     10000,
+		Method:      http.MethodGet,
+		Header:      make(http.Header),
 		RespDecoder: jsonDecoder{},
 	}
 
@@ -95,19 +97,25 @@ func New(baseURL ...string) *Client {
 
 // Sub create an instance from current. will inherit all options
 func (h *Client) Sub() *Client {
-	// copy HeaderM pairs into new Header map
+	// copy Header pairs into new Header map
 	headerCopy := make(http.Header)
 	for k, v := range h.Header {
 		headerCopy[k] = v
 	}
 
 	return &Client{
-		doer:    h.doer,
-		Method:  h.Method,
-		BaseURL: h.BaseURL,
-		Header:  headerCopy,
-		// query:    append([]any{}, s.query...),
-		RespDecoder: h.RespDecoder,
+		doer:         h.doer,
+		Method:       h.Method,
+		BaseURL:      h.BaseURL,
+		Header:       headerCopy,
+		ContentType:  h.ContentType,
+		Timeout:      h.Timeout,
+		RespDecoder:  h.RespDecoder,
+		MaxRetries:   h.MaxRetries,
+		RetryDelay:   h.RetryDelay,
+		RetryChecker: h.RetryChecker,
+		BeforeSend:   h.BeforeSend,
+		AfterSend:    h.AfterSend,
 	}
 }
 
@@ -196,9 +204,10 @@ func (h *Client) ConfigHClient(fn func(hClient *http.Client)) *Client {
 // SetMaxIdleConns Set the maximum number of idle connections.
 func (h *Client) SetMaxIdleConns(maxIdleConns, maxIdleConnsPerHost int) *Client {
 	if hc, ok := h.doer.(*http.Client); ok {
-		transport := hc.Transport.(*http.Transport)
-		transport.MaxIdleConns = maxIdleConns
-		transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
+		if transport, ok := hc.Transport.(*http.Transport); ok && transport != nil {
+			transport.MaxIdleConns = maxIdleConns
+			transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
+		}
 	}
 	return h
 }
@@ -206,9 +215,6 @@ func (h *Client) SetMaxIdleConns(maxIdleConns, maxIdleConnsPerHost int) *Client 
 // DefaultTimeout set default timeout in milliseconds for requests. default is 0 (infinite)
 func (h *Client) DefaultTimeout(timeoutMs int) *Client {
 	h.Timeout = timeoutMs
-	if hc, ok := h.doer.(*http.Client); ok {
-		hc.Timeout = time.Duration(timeoutMs) * time.Millisecond
-	}
 	return h
 }
 
@@ -376,7 +382,7 @@ func (h *Client) Download(url, savePath string, optFns ...OptionFn) (int, error)
 
 	if resp.IsFail() {
 		resp.QuietCloseBody()
-		return 0, fmt.Errorf("download failed, status code: %d", resp.StatusCode)
+		return 0, fmt.Errorf("Download failed, status code: %d", resp.StatusCode)
 	}
 	return resp.SaveFile(savePath)
 }
@@ -646,6 +652,15 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	ctx := opt.Context
 	if ctx == nil {
 		ctx = context.Background()
+	}
+
+	// set default timeout if not set
+	if opt.Timeout <= 0 {
+		opt.Timeout = h.Timeout
+	}
+	// convert timeout to duration
+	if opt.Timeout > 0 {
+		ctx, opt.TCancelFn = context.WithTimeout(ctx, time.Duration(opt.Timeout)*time.Millisecond)
 	}
 
 	// append Query params

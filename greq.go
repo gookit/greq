@@ -2,7 +2,6 @@
 package greq
 
 import (
-	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -31,17 +30,17 @@ func DefaultRetryChecker(resp *Response, err error, attempt int) bool {
 	if err != nil {
 		return true
 	}
-	
+
 	// Retry on server errors (5xx)
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 {
 		return true
 	}
-	
+
 	// Retry on rate limiting (429)
 	if resp.StatusCode == 429 {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -63,23 +62,17 @@ func Must(w *Response, err error) *Response {
 
 // NewTransport create new http transport
 func NewTransport(onCreate func(ht *http.Transport)) *http.Transport {
-	// Customize the Transport to have larger connection pool.
 	transport := &http.Transport{
-		// Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		// ForceAttemptHTTP2:     true,
 		MaxIdleConns:          500,
 		MaxConnsPerHost:       200,
 		MaxIdleConnsPerHost:   100,
-		IdleConnTimeout:       60 * time.Second,
-		TLSHandshakeTimeout:   1 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
 	}
 
 	if onCreate != nil {
