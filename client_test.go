@@ -227,7 +227,7 @@ func TestClient_Retry_CustomChecker(t *testing.T) {
 
 	// 创建客户端并设置重试配置
 	client := greq.New().WithMaxRetries(2).WithRetryDelay(10).
-	WithRetryChecker(customChecker)
+		WithRetryChecker(customChecker)
 
 	// 发送请求
 	resp, err := client.GetDo(ts.URL)
@@ -363,7 +363,7 @@ func TestClient_Download(t *testing.T) {
 
 	// 测试下载成功
 	savePath := filepath.Join(tempDir, "test_down.json")
-	_, err = client.Download(testBaseURL + "/json", savePath)
+	_, err = client.Download(testBaseURL+"/json", savePath)
 	assert.NoErr(t, err)
 
 	// 验证文件内容
@@ -381,4 +381,100 @@ func TestClient_Download(t *testing.T) {
 	_, err = client.Download(ts404.URL, savePath404)
 	assert.Err(t, err)
 	assert.Contains(t, err.Error(), "Download failed, status code: 404")
+}
+
+func TestClient_UploadFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "greq_upload_test")
+	assert.NoErr(t, err)
+	defer os.RemoveAll(tempDir)
+
+	uploadFile := filepath.Join(tempDir, "test.txt")
+	err = os.WriteFile(uploadFile, []byte("hello world"), 0644)
+	assert.NoErr(t, err)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Eq(t, "POST", r.Method)
+		assert.StrContains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+
+		err := r.ParseMultipartForm(10 << 20)
+		assert.NoErr(t, err)
+
+		file, header, err := r.FormFile("file")
+		assert.NoErr(t, err)
+		defer file.Close()
+
+		assert.Eq(t, "test.txt", header.Filename)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer ts.Close()
+
+	client := greq.New()
+	resp, err := client.UploadFile(ts.URL, "file", uploadFile)
+	assert.NoErr(t, err)
+	assert.True(t, resp.IsOK())
+}
+
+func TestClient_UploadFiles(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "greq_upload_test")
+	assert.NoErr(t, err)
+	defer os.RemoveAll(tempDir)
+
+	file1 := filepath.Join(tempDir, "file1.txt")
+	file2 := filepath.Join(tempDir, "file2.txt")
+	os.WriteFile(file1, []byte("content1"), 0644)
+	os.WriteFile(file2, []byte("content2"), 0644)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Eq(t, "POST", r.Method)
+		err := r.ParseMultipartForm(10 << 20)
+		assert.NoErr(t, err)
+
+		assert.NotNil(t, r.MultipartForm.File["file1"])
+		assert.NotNil(t, r.MultipartForm.File["file2"])
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer ts.Close()
+
+	client := greq.New()
+	resp, err := client.UploadFiles(ts.URL, map[string]string{
+		"file1": file1,
+		"file2": file2,
+	})
+	assert.NoErr(t, err)
+	assert.True(t, resp.IsOK())
+}
+
+func TestClient_UploadWithData(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "greq_upload_test")
+	assert.NoErr(t, err)
+	defer os.RemoveAll(tempDir)
+
+	uploadFile := filepath.Join(tempDir, "data.txt")
+	os.WriteFile(uploadFile, []byte("file content"), 0644)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Eq(t, "POST", r.Method)
+		err := r.ParseMultipartForm(10 << 20)
+		assert.NoErr(t, err)
+
+		assert.NotNil(t, r.MultipartForm.File["document"])
+		assert.Eq(t, "value1", r.FormValue("field1"))
+		assert.Eq(t, "value2", r.FormValue("field2"))
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer ts.Close()
+
+	client := greq.New()
+	resp, err := client.UploadWithData(ts.URL,
+		map[string]string{"document": uploadFile},
+		map[string]string{"field1": "value1", "field2": "value2"},
+	)
+	assert.NoErr(t, err)
+	assert.True(t, resp.IsOK())
 }

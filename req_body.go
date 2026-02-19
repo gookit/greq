@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gookit/goutil/netutil/httpctype"
@@ -48,7 +51,6 @@ func (p jsonBodyProvider) ContentType() string {
 func (p jsonBodyProvider) Body() (io.Reader, error) {
 	buf := &bytes.Buffer{}
 	err := json.NewEncoder(buf).Encode(p.payload)
-
 	if err != nil {
 		return nil, err
 	}
@@ -82,4 +84,64 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 		return strings.NewReader(str), nil
 	}
 	return nil, fmt.Errorf("formBodyProvider: invalid form data type: %T", p.payload)
+}
+
+type multipartBodyProvider struct {
+	files       map[string]string
+	fields      map[string]string
+	contentType string
+	body        *bytes.Buffer
+}
+
+// ContentType value
+func (p *multipartBodyProvider) ContentType() string {
+	return p.contentType
+}
+
+// Body data build
+func (p *multipartBodyProvider) Body() (io.Reader, error) {
+	if p.body == nil {
+		if err := p.build(); err != nil {
+			return nil, err
+		}
+	}
+	return p.body, nil
+}
+
+func (p *multipartBodyProvider) build() error {
+	buf := &bytes.Buffer{}
+	writer := multipart.NewWriter(buf)
+
+	for fieldName, filePath := range p.files {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("open file %s failed: %w", filePath, err)
+		}
+
+		part, err := writer.CreateFormFile(fieldName, filepath.Base(filePath))
+		if err != nil {
+			file.Close()
+			return fmt.Errorf("create form file %s failed: %w", fieldName, err)
+		}
+
+		_, err = io.Copy(part, file)
+		file.Close()
+		if err != nil {
+			return fmt.Errorf("copy file %s failed: %w", filePath, err)
+		}
+	}
+
+	for key, value := range p.fields {
+		if err := writer.WriteField(key, value); err != nil {
+			return fmt.Errorf("write field %s failed: %w", key, err)
+		}
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("close multipart writer failed: %w", err)
+	}
+
+	p.contentType = writer.FormDataContentType()
+	p.body = buf
+	return nil
 }
