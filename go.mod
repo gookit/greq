@@ -2,8 +2,6 @@ module github.com/gookit/greq
 
 go 1.21
 
-toolchain go1.21.1
-
 require github.com/gookit/goutil v0.7.3
 
 require (
