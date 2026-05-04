@@ -2,7 +2,7 @@ module github.com/gookit/greq
 
 go 1.21
 
-require github.com/gookit/goutil v0.7.3
+require github.com/gookit/goutil v0.7.5
 
 require (
 	golang.org/x/sync v0.11.0 // indirect
