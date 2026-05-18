@@ -10,9 +10,23 @@ import (
 	"time"
 
 	"github.com/gookit/goutil/strutil"
-	"github.com/gookit/goutil/x/ccolor"
 	"github.com/gookit/greq"
 )
+
+// Snapshot is a point-in-time view of bench progress, delivered to OnProgress.
+// All fields are populated from atomically-loaded counters so the callback
+// may run in a separate goroutine.
+type Snapshot struct {
+	Completed int64         // requests dispatched so far (== totalReqs)
+	Total     int64         // target Number (0 if Duration-driven)
+	Elapsed   time.Duration // time since the run started
+	Duration  time.Duration // configured run duration (0 if Number-driven)
+	Done      bool          // true on the final snapshot fired after wg.Wait
+}
+
+// ProgressFn is the callback invoked on each tick and at completion.
+// Implementations should be non-blocking — it runs in the bench's progress goroutine.
+type ProgressFn func(s Snapshot)
 
 // HTTPBench 实现类似 apache bench 的测试功能
 type HTTPBench struct {
@@ -40,8 +54,12 @@ type HTTPBench struct {
 	failReqs    int64
 	statusCodes map[int]int64
 	// 响应时间统计
-	respTimes    []time.Duration
-	showProgress bool // 是否显示进度条
+	respTimes []time.Duration
+
+	// Progress 回调 — nil 时不启动进度协程。CLI 渲染通过这个钩子接入，
+	// 让库本身不依赖任何 UI 包。
+	onProgress     ProgressFn
+	progressTick   time.Duration // 触发间隔, 0 时默认 200ms
 
 	// 客户端
 	client *greq.Client
@@ -131,10 +149,32 @@ func (b *HTTPBench) SetDuration(duration time.Duration) *HTTPBench {
 	return b
 }
 
-// SetShowProgress 设置是否显示进度条
-func (b *HTTPBench) SetShowProgress(show bool) *HTTPBench {
-	b.showProgress = show
+// OnProgress installs a callback invoked periodically (and once at completion)
+// while RunCtx is executing. Pass nil to disable progress reporting (default).
+//
+// The callback runs in the bench's progress goroutine — keep it non-blocking.
+// The library does NOT render anything itself; callers (such as cmd/gbench)
+// drive their own UI (e.g. cliui/progress) via this hook.
+func (b *HTTPBench) OnProgress(fn ProgressFn) *HTTPBench {
+	b.onProgress = fn
 	return b
+}
+
+// ProgressTick controls how often OnProgress fires. Default is 200ms.
+func (b *HTTPBench) ProgressTick(d time.Duration) *HTTPBench {
+	b.progressTick = d
+	return b
+}
+
+// snapshot builds a point-in-time Snapshot from the current atomic counters.
+func (b *HTTPBench) snapshot(done bool) Snapshot {
+	return Snapshot{
+		Completed: atomic.LoadInt64(&b.totalReqs),
+		Total:     int64(b.Number),
+		Elapsed:   time.Since(b.startTime),
+		Duration:  b.Duration,
+		Done:      done,
+	}
 }
 
 // initClient 初始化HTTP客户端
@@ -151,50 +191,6 @@ func (b *HTTPBench) initClient() {
 	for k, v := range b.Headers {
 		b.client.DefaultHeader(k, v)
 	}
-}
-
-// showProgressBar render a single-line progress bar using CR + ESC[K to clear
-// previous render. Safe to call repeatedly; renders current snapshot every time.
-func (b *HTTPBench) showProgressBar() {
-	completed := atomic.LoadInt64(&b.totalReqs)
-	elapsed := time.Since(b.startTime)
-
-	var progress float64
-	if b.Duration > 0 {
-		if b.Duration.Seconds() > 0 {
-			progress = elapsed.Seconds() / b.Duration.Seconds()
-		}
-	} else if b.Number > 0 {
-		progress = float64(completed) / float64(b.Number)
-	}
-	if progress > 1.0 {
-		progress = 1.0
-	}
-
-	bar := buildProgressBar(progress, 50)
-	percent := int(progress * 100)
-
-	// \r returns the cursor to start, \x1b[K erases from cursor to EOL —
-	// prevents stale chars when the line shrinks (e.g. Duration digit count drops).
-	ccolor.Printf("\r\x1b[K<green1>Progress</>: %s %d%% | Requests: %d/%d | Duration: %s",
-		bar, percent, completed, b.Number, elapsed.Round(time.Second))
-}
-
-// buildProgressBar 构建进度条
-func buildProgressBar(progress float64, barWidth int) string {
-	filled := int(float64(barWidth) * progress)
-	empty := barWidth - filled
-
-	bar := "["
-	for i := 0; i < filled; i++ {
-		bar += "="
-	}
-	for i := 0; i < empty; i++ {
-		bar += " "
-	}
-	bar += "]"
-
-	return bar
 }
 
 // Run executes the benchmark with a background context. Equivalent to RunCtx(context.Background()).
@@ -226,20 +222,24 @@ func (b *HTTPBench) RunCtx(parent context.Context) (*BenchResult, error) {
 	var wg sync.WaitGroup
 	workCh := make(chan struct{}, b.Concurrency)
 
-	// Progress display goroutine — 200ms is smooth enough but ~5x less terminal churn than 100ms.
-	// progressDone lets us deterministically wait for the goroutine to exit before the
-	// final render, so it can't print stale progress text into the results output.
+	// Progress goroutine — only started when an OnProgress callback is installed.
+	// progressDone lets us deterministically wait for it to exit before the final
+	// snapshot so the caller's renderer can't observe the bench mid-shutdown.
 	var progressDone chan struct{}
-	if b.showProgress {
-		progressTicker := time.NewTicker(200 * time.Millisecond)
-		defer progressTicker.Stop()
+	if b.onProgress != nil {
+		tick := b.progressTick
+		if tick <= 0 {
+			tick = 200 * time.Millisecond
+		}
+		ticker := time.NewTicker(tick)
+		defer ticker.Stop()
 		progressDone = make(chan struct{})
 		go func() {
 			defer close(progressDone)
 			for {
 				select {
-				case <-progressTicker.C:
-					b.showProgressBar()
+				case <-ticker.C:
+					b.onProgress(b.snapshot(false))
 				case <-b.ctx.Done():
 					return
 				}
@@ -256,12 +256,11 @@ func (b *HTTPBench) RunCtx(parent context.Context) (*BenchResult, error) {
 	wg.Wait()
 	b.endTime = time.Now()
 
-	// Render the final state (may be partial if context was cancelled) and add a newline.
-	if b.showProgress {
+	// Deliver one final snapshot (may be partial if context was cancelled).
+	if b.onProgress != nil {
 		b.cancel()      // stop the progress goroutine
-		<-progressDone  // wait for it to actually exit before final render
-		b.showProgressBar()
-		fmt.Println()
+		<-progressDone  // wait for it to actually exit
+		b.onProgress(b.snapshot(true))
 	}
 
 	return b.generateResult(), nil
