@@ -6,6 +6,8 @@ on:
       - '**.go'
       - '**.yml'
   push:
+    branches: # Only trigger branch pushes; tag pushes are ignored.
+      - '**'
     paths:
       - 'go.mod'
       - '**.go'
@@ -18,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go_version: [1.21, 1.22, 1.23, 1.24, stable]
+        go_version: [1.23, 1.24, 1.25, stable]
         os: [ubuntu-latest]
 
     steps:

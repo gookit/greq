@@ -19,6 +19,14 @@ import (
 	"github.com/gookit/greq/requtil"
 )
 
+// Build-time variables injected via -ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildTime = "unknown"
+)
+
+var showVersion bool
 var cmdOpts = struct {
 	method   string
 	data     string
@@ -27,31 +35,31 @@ var cmdOpts = struct {
 	timeout  int
 	output   string
 	raw      string
-	httpVars  cflag.KVString // HTTP request variables
+	httpVars cflag.KVString // HTTP request variables
 	down     bool
 	verbose  bool
 	silent   bool
 	follow   bool
 	insecure bool
-	json     bool // quick set Content-Type: application/json
+	json     bool   // quick set Content-Type: application/json
 	agent    string // custom user-agent
-	headOnly bool // show response headers only
+	headOnly bool   // show response headers only
 }{
 	headers:  cflag.KVString{Sep: ":"},
 	formData: cflag.KVString{Sep: "="},
-	httpVars:  cflag.KVString{Sep: "="},
+	httpVars: cflag.KVString{Sep: "="},
 }
 
-// 实现类似curl的http请求工具
+// 实现类似 curl 的http请求工具
 //
 // Install:
 //
-//  go install ./cmd/greq # install from source code
-//	go install github.com/gookit/greq/cmd/greq@latest
+//	 go install ./cmd/greq # install from source code
+//		go install github.com/gookit/greq/cmd/greq@latest
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
-		c.Desc = "Lightweight HTTP request tool, like curl"
-		c.Version = "1.0.0"
+		c.Desc = fmt.Sprintf("Lightweight HTTP request tool, like curl.\n Commit: %s, Build: %s", GitCommit, BuildTime)
+		c.Version = Version
 	})
 
 	// 添加选项
@@ -77,6 +85,7 @@ With request match:
 	cmd.BoolVar(&cmdOpts.insecure, "insecure", false, "Allow insecure SSL connections;;k")
 	cmd.BoolVar(&cmdOpts.json, "json", false, "Quick set Content-Type: application/json")
 	cmd.BoolVar(&cmdOpts.headOnly, "head", false, "Show response headers only;;I")
+	cmd.BoolVar(&showVersion, "version", false, "Show version information.;;V")
 
 	cmd.AddArg("url", "the URL to request", false, nil)
 
@@ -93,6 +102,14 @@ With request match:
   # Download file
   greq -O https://example.com/file.zip
 	`
+
+	cmd.AfterFlagParse = func(c *cflag.CFlags) bool {
+		if showVersion {
+			ccolor.Printf("Version: <green>%s</> (%s, %s)\n", c.Version, GitCommit, BuildTime)
+			return false
+		}
+		return true
+	}
 
 	cmd.Func = func(c *cflag.CFlags) error {
 		return runRequest(c)
@@ -130,12 +147,12 @@ func runRequest(c *cflag.CFlags) error {
 // handleRawRequest 处理IDE .http格式文件
 func handleRawRequest(filename string) error {
 	var keywords []string
-    if strings.Contains(filename, "#") {
-        // 处理 filepath#keywords 格式
-        parts := strings.SplitN(filename, "#", 2)
-        filename = parts[0]
+	if strings.Contains(filename, "#") {
+		// 处理 filepath#keywords 格式
+		parts := strings.SplitN(filename, "#", 2)
+		filename = parts[0]
 		keywords = strings.Split(parts[1], ",")
-    }
+	}
 
 	// 解析 .http 文件格式
 	hf, err := httpfile.ParseHTTPFile(filename)
@@ -531,13 +548,13 @@ func showDownloadProgress(downloaded int64, totalSize int64, startTime time.Time
 	if speed > 0 && downloaded < totalSize {
 		remaining := float64(totalSize-downloaded) / speed
 		fmt.Printf("\r[%-30s] %.1f%% %s/s %s",
-			strings.Repeat("█", int(percentage/100*30)) + strings.Repeat("░", 30-int(percentage/100*30)),
+			strings.Repeat("█", int(percentage/100*30))+strings.Repeat("░", 30-int(percentage/100*30)),
 			percentage,
 			formatBytes(int(speed)),
 			formatDuration(time.Duration(int(remaining))*time.Second))
 	} else {
 		fmt.Printf("\r[%-30s] %.1f%% %s/s",
-			strings.Repeat("█", int(percentage/100*30)) + strings.Repeat("░", 30-int(percentage/100*30)),
+			strings.Repeat("█", int(percentage/100*30))+strings.Repeat("░", 30-int(percentage/100*30)),
 			percentage,
 			formatBytes(int(speed)))
 	}

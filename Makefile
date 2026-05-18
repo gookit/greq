@@ -1,5 +1,5 @@
 # Makefile for greq project
-# 
+#
 # Usage:
 #   make build          - Build all binaries for current platform
 #   make build-all      - Build binaries for all platforms
@@ -222,11 +222,11 @@ install: ## Install binaries to GOPATH/bin
 
 .PHONY: install-greq
 install-greq: ## Install greq to GOPATH/bin
-	$(GOCMD) install ./cmd/greq
+	$(GOCMD) install $(LDFLAGS) ./cmd/greq
 
 .PHONY: install-gbench
 install-gbench: ## Install gbench to GOPATH/bin
-	$(GOCMD) install ./cmd/gbench
+	$(GOCMD) install $(LDFLAGS) ./cmd/gbench
 
 # ============================================================================
 # Clean targets

@@ -16,51 +16,61 @@ import (
 	"github.com/gookit/greq/ext/bench"
 )
 
+// Build-time variables injected via -ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildTime = "unknown"
+)
+
+var showVersion bool
 var benchOpts = struct {
-	number int
+	number      int
 	concurrency int
 	// Duration of application to send requests. If duration is specified, n is ignored.
 	duration string
 	// Data http request body for POST/PUT requests.
-	data string
+	data     string
 	qpsLimit int
-	timeout int // Timeout for each request
-	output string
-	headers cflag.KVString
-	json bool
-	method string
+	timeout  int // Timeout for each request
+	output   string
+	headers  cflag.KVString
+	json     bool
+	method   string
 	progress bool // 是否显示进度条
 }{
 	headers: cflag.KVString{Sep: ":"},
 }
 
 // RUN:
-//  gbench -n 1000 -c 10 https://www.baidu.com
+//
+//	gbench -n 1000 -c 10 https://www.baidu.com
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
-		c.Desc = "Lightweight Benchmark HTTP requests, like ab"
-		c.Version = "1.0.0"
+		c.Desc = fmt.Sprintf("Lightweight Benchmark HTTP requests, like ab.\n Commit: %s, Build: %s", GitCommit, BuildTime)
+		c.Version = Version
 	})
 
 	// add options
-	cmd.IntVar(&benchOpts.number,  "number", 100, "number of requests to run;;n")
-	cmd.IntVar(&benchOpts.concurrency,  "concurrency", 3, "number of multiple requests to make at a time;;c")
-	cmd.StringVar(&benchOpts.duration,  "duration", "", `duration of application to send requests. If duration is specified, <green>n</> is ignored.
+	cmd.IntVar(&benchOpts.number, "number", 100, "number of requests to run;;n")
+	cmd.IntVar(&benchOpts.concurrency, "concurrency", 3, "number of multiple requests to make at a time;;c")
+	cmd.StringVar(&benchOpts.duration, "duration", "", `duration of application to send requests. If duration is specified, <green>n</> is ignored.
 Example:
  - 10s: 10 seconds
  - 1m: 1 minute
  - 1h: 1 hour;;z`)
-	cmd.StringVar(&benchOpts.data,  "data", "", `data http request body for POST/PUT requests.
+	cmd.StringVar(&benchOpts.data, "data", "", `data http request body for POST/PUT requests.
 Allow use <green>@filename</> to read data from file.
 	;;d`)
-	cmd.IntVar(&benchOpts.qpsLimit,  "qps", 0, "rate limit for all, in queries per second (QPS);;q")
-	cmd.StringVar(&benchOpts.output,  "output", "stdout", `Output file to write the results to.
+	cmd.IntVar(&benchOpts.qpsLimit, "qps", 0, "rate limit for all, in queries per second (QPS);;q")
+	cmd.StringVar(&benchOpts.output, "output", "stdout", `Output file to write the results to.
 If not specified, results are written to stdout.;;o`)
-	cmd.Var(&benchOpts.headers,  "header", `Custom HTTP header. Examples: -H "foo: bar";;H`)
-	cmd.IntVar(&benchOpts.timeout,  "timeout", 10, "Timeout(seconds) for each request. Default to infinite.;;t")
-	cmd.StringVar(&benchOpts.method,  "method", "GET", "HTTP method;;m")
-	cmd.BoolVar(&benchOpts.json,  "json", false, "Quick add Content-Type: application/json header.")
-	cmd.BoolVar(&benchOpts.progress,  "progress", true, "Show progress bar.")
+	cmd.Var(&benchOpts.headers, "header", `Custom HTTP header. Examples: -H "foo: bar";;H`)
+	cmd.IntVar(&benchOpts.timeout, "timeout", 10, "Timeout(seconds) for each request. Default to infinite.;;t")
+	cmd.StringVar(&benchOpts.method, "method", "GET", "HTTP method;;m")
+	cmd.BoolVar(&benchOpts.json, "json", false, "Quick add Content-Type: application/json header.")
+	cmd.BoolVar(&benchOpts.progress, "progress", true, "Show progress bar.")
+	cmd.BoolVar(&showVersion, "version", false, "Show version information.;;V")
 
 	cmd.AddArg("url", "the URL to benchmark test", true, nil)
 
@@ -74,6 +84,14 @@ If not specified, results are written to stdout.;;o`)
   # POST request with JSON data
   gbench -n 1000 -c 10 -m POST -d '{"key":"value"}' https://www.example.com
 	`
+
+	cmd.AfterFlagParse = func(c *cflag.CFlags) bool {
+		if showVersion {
+			ccolor.Printf("Version: <green>%s</> (%s, %s)\n", c.Version, GitCommit, BuildTime)
+			return false
+		}
+		return true
+	}
 
 	cmd.Func = func(c *cflag.CFlags) error {
 		return runBenchmark(c)
