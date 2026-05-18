@@ -198,9 +198,11 @@ func (bp *Processor) ExecuteAll() Results {
 	return results
 }
 
-// ExecuteAny executes requests and returns when any one completes successfully
+// ExecuteAny executes requests and returns when any one completes successfully.
+// If every request fails it returns nil (rather than hanging until the batch timeout).
 func (bp *Processor) ExecuteAny() *Result {
-	if len(bp.requests) == 0 {
+	total := len(bp.requests)
+	if total == 0 {
 		return nil
 	}
 
@@ -212,14 +214,12 @@ func (bp *Processor) ExecuteAny() *Result {
 		defer cancel()
 	}
 
-	// Create jobs channel
-	jobs := make(chan *Request, len(bp.requests))
+	jobs := make(chan *Request, total)
 
-	// Start workers
 	var wg sync.WaitGroup
 	numWorkers := bp.maxConcurrency
-	if numWorkers > len(bp.requests) {
-		numWorkers = len(bp.requests)
+	if numWorkers > total {
+		numWorkers = total
 	}
 
 	for i := 0; i < numWorkers; i++ {
@@ -227,7 +227,6 @@ func (bp *Processor) ExecuteAny() *Result {
 		go bp.worker(&wg, jobs)
 	}
 
-	// Send all requests to jobs channel
 	go func() {
 		defer close(jobs)
 		for _, req := range bp.requests {
@@ -239,18 +238,27 @@ func (bp *Processor) ExecuteAny() *Result {
 		}
 	}()
 
-	// Wait for any successful result
+	// Wait for any successful result. Track failures so we don't sit forever on
+	// <-bp.results once every worker has produced its (failed) result.
+	failures := 0
 	for {
 		select {
 		case result := <-bp.results:
 			if result.Error == nil && result.Response != nil && result.Response.IsOK() {
-				bp.cancel() // Cancel other requests
+				bp.cancel() // cancel other workers
 				wg.Wait()
 				return result
 			}
-			// If this result failed, continue waiting
+			failures++
+			if failures >= total {
+				bp.cancel()
+				wg.Wait()
+				return nil // all requests failed
+			}
 		case <-ctx.Done():
-			// Context cancelled, return last result or nil
+			// Timeout / external cancel — try to grab one last result if buffered,
+			// otherwise return nil. Either way wait for workers to finish.
+			bp.cancel()
 			select {
 			case result := <-bp.results:
 				wg.Wait()

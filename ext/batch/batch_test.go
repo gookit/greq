@@ -248,6 +248,23 @@ func TestGetAnyWithOptions(t *testing.T) {
 	assert.NotNil(t, result.Response)
 }
 
+// TestExecuteAnyAllFailReturnsNil: 之前会等到 batch timeout (默认 30s) 才返回。
+// 修复后所有请求都失败时立即返回 nil。
+func TestExecuteAnyAllFailReturnsNil(t *testing.T) {
+	requests := []*batch.Request{
+		{ID: "a", Method: "GET", URL: "http://127.0.0.1:1/x"},
+		{ID: "b", Method: "GET", URL: "http://127.0.0.1:1/y"},
+	}
+
+	start := time.Now()
+	result := batch.ExecuteAny(requests)
+	elapsed := time.Since(start)
+
+	assert.Nil(t, result)
+	// 应该秒级返回（实际 ~10ms），不会接近 30s timeout
+	assert.True(t, elapsed < 5*time.Second, "ExecuteAny should return promptly when all fail, took %s", elapsed)
+}
+
 func TestExecuteAllWithError(t *testing.T) {
 	// 准备测试数据，包含一个会失败的请求。
 	// 使用 loopback + 未监听端口 (127.0.0.1:1) 而不是无效域名:
