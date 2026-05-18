@@ -14,6 +14,7 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/strutil"
 	"github.com/gookit/greq/ext/httpfile"
+	"github.com/gookit/greq/internal/bodyprovider"
 )
 
 // Client is an HTTP Request builder and sender.
@@ -389,30 +390,22 @@ func (h *Client) Download(url, savePath string, optFns ...OptionFn) (int, error)
 
 // UploadFile uploads a single file to the given URL.
 func (h *Client) UploadFile(pathURL, fieldName, filePath string, optFns ...OptionFn) (*Response, error) {
-	provider := &multipartBodyProvider{
-		files: map[string]string{fieldName: filePath},
-	}
 	opt := NewOpt2(optFns, http.MethodPost)
-	opt.Provider = provider
+	opt.Provider = bodyprovider.NewMultipart(map[string]string{fieldName: filePath}, nil)
 	return h.SendWithOpt(pathURL, opt)
 }
 
 // UploadFiles uploads multiple files to the given URL.
 func (h *Client) UploadFiles(pathURL string, files map[string]string, optFns ...OptionFn) (*Response, error) {
-	provider := &multipartBodyProvider{files: files}
 	opt := NewOpt2(optFns, http.MethodPost)
-	opt.Provider = provider
+	opt.Provider = bodyprovider.NewMultipart(files, nil)
 	return h.SendWithOpt(pathURL, opt)
 }
 
 // UploadWithData uploads files with additional form fields.
 func (h *Client) UploadWithData(pathURL string, files map[string]string, fields map[string]string, optFns ...OptionFn) (*Response, error) {
-	provider := &multipartBodyProvider{
-		files:  files,
-		fields: fields,
-	}
 	opt := NewOpt2(optFns, http.MethodPost)
-	opt.Provider = provider
+	opt.Provider = bodyprovider.NewMultipart(files, fields)
 	return h.SendWithOpt(pathURL, opt)
 }
 

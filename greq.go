@@ -11,6 +11,17 @@ import (
 // DefaultDoer for request.
 var DefaultDoer = http.DefaultClient
 
+// BodyProvider provides Body content for http.Request attachment.
+//
+// Concrete implementations live in internal/bodyprovider; users may also
+// implement this interface themselves and pass it via Builder.BodyProvider.
+type BodyProvider interface {
+	// ContentType returns the Content-Type of the body.
+	ContentType() string
+	// Body returns the io.Reader body.
+	Body() (io.Reader, error)
+}
+
 // HandleFunc for the Middleware
 type HandleFunc func(r *http.Request) (*Response, error)
 

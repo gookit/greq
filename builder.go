@@ -14,6 +14,7 @@ import (
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/strutil"
 	"github.com/gookit/goutil/x/basefn"
+	"github.com/gookit/greq/internal/bodyprovider"
 )
 
 const (
@@ -312,7 +313,7 @@ func (b *Builder) BodyProvider(bp BodyProvider) *Builder {
 
 // BodyReader with custom io reader body
 func (b *Builder) BodyReader(r io.Reader) *Builder {
-	b.Provider = bodyProvider{body: r}
+	b.Provider = bodyprovider.NewReader(r)
 	return b
 }
 
@@ -327,13 +328,13 @@ func (b *Builder) FileContentsBody(filePath string) *Builder {
 
 // JSONBody with JSON data body
 func (b *Builder) JSONBody(jsonData any) *Builder {
-	b.Provider = jsonBodyProvider{payload: jsonData}
+	b.Provider = bodyprovider.NewJSON(jsonData)
 	return b
 }
 
 // FormBody with form data body
 func (b *Builder) FormBody(formData any) *Builder {
-	b.Provider = formBodyProvider{payload: formData}
+	b.Provider = bodyprovider.NewForm(formData)
 	return b
 }
 
