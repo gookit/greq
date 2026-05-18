@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -177,12 +178,13 @@ func runBenchmark(c *cflag.CFlags) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
-	interrupted := false
+
+	var interrupted atomic.Bool
 	go func() {
 		if _, ok := <-sigCh; !ok {
 			return
 		}
-		interrupted = true
+		interrupted.Store(true)
 		ccolor.Yellowf("\nInterrupt received, stopping benchmark and showing partial results...\n")
 		cancel()
 	}()
@@ -192,7 +194,6 @@ func runBenchmark(c *cflag.CFlags) error {
 	if err != nil {
 		return fmt.Errorf("benchmark failed: %v", err)
 	}
-	_ = interrupted // reserved for future use (e.g. non-zero exit on interrupt)
 
 	// 输出结果 — 终端用带色版本，文件用纯文本版本（避免 <green>...</> 写进文件）
 	if benchOpts.output == "stdout" {
@@ -207,6 +208,11 @@ func runBenchmark(c *cflag.CFlags) error {
 		ccolor.Infof("Results written to %s\n", benchOpts.output)
 	}
 
+	// Reflect interruption in the exit code so CI / scripts can tell a
+	// signalled run apart from a clean completion.
+	if interrupted.Load() {
+		return fmt.Errorf("benchmark interrupted by signal")
+	}
 	return nil
 }
 

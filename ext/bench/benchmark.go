@@ -3,6 +3,7 @@ package bench
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -280,9 +281,13 @@ func (b *HTTPBench) dispatcher(workCh chan<- struct{}) {
 				return
 			}
 
-			// QPS限制
+			// QPS 限制 — 同时监听 ctx.Done 以便低 QPS 下取消能及时生效
 			if b.rateLimiter != nil {
-				<-b.rateLimiter.C
+				select {
+				case <-b.rateLimiter.C:
+				case <-b.ctx.Done():
+					return
+				}
 			}
 
 			select {
@@ -337,10 +342,11 @@ func (b *HTTPBench) doRequest() {
 	b.respTimes = append(b.respTimes, duration)
 	b.mu.Unlock()
 
-	// 统计字节数 — 用 BodyBufferE 避免读 body 出错时 panic 把整个 bench 拉崩
+	// 流式读 body 只为计数 — 不要把整个响应拉到内存里 (大响应 + 高并发 = OOM).
+	// io.Discard + io.Copy 让 transport 复用连接并把字节扔掉。
 	if resp.Body != nil {
-		if buf, berr := resp.BodyBufferE(); berr == nil {
-			atomic.AddInt64(&b.totalBytes, int64(buf.Len()))
+		if n, cerr := io.Copy(io.Discard, resp.Body); cerr == nil {
+			atomic.AddInt64(&b.totalBytes, n)
 		}
 	}
 
