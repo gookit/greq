@@ -29,12 +29,14 @@ jobs:
           echo "RELEASE_TAG=${GITHUB_REF:10}" >> $GITHUB_ENV
           echo "RELEASE_NAME=$GITHUB_WORKFLOW" >> $GITHUB_ENV
 
-      - name: Mod tidy (cmd submodules)
-        # Each (cd ...) is a subshell so the second cd starts from the
-        # workspace root, not from inside cmd/greq.
+      - name: Verify modules (cmd submodules)
+        # Use 'go mod verify' instead of 'tidy' so a drifted go.sum fails
+        # the release loudly rather than getting silently rewritten on the
+        # build machine. Each (cd ...) is a subshell so the second cd starts
+        # from the workspace root, not from inside cmd/greq.
         run: |
-          (cd cmd/greq && go mod tidy)
-          (cd cmd/gbench && go mod tidy)
+          (cd cmd/greq && go mod verify)
+          (cd cmd/gbench && go mod verify)
 
       - name: Build bin packages
         run: |
