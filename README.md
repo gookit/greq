@@ -1,4 +1,4 @@
-# Greq
+# greq
 
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/gookit/greq?style=flat-square)
 [![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/gookit/greq)](https://github.com/gookit/goutil)
@@ -7,38 +7,40 @@
 [![Unit-Tests](https://github.com/gookit/greq/workflows/Unit-Tests/badge.svg)](https://github.com/gookit/greq/actions)
 [![Coverage Status](https://coveralls.io/repos/github/gookit/greq/badge.svg?branch=main)](https://coveralls.io/github/gookit/greq?branch=main)
 
-> [中文说明](README.zh-CN.md) | [English](README.md)
+> [中文说明](README.zh-CN.md) | English
 
-**greq** A simple HTTP client request builder and sender, with retry feature.
+**greq** is a small, composable HTTP client for Go — a chainable request
+builder, pluggable middleware, retry, batch, file upload/download, and
+bundled CLI tools (`greq`, `gbench`).
 
 ## Features
 
-- Make HTTP requests, supports `GET,POST,PUT,PATCH,DELETE,HEAD`
-- Transform request and response data
-- Supports chain configuration request
-- Supports defining and adding middleware
-- Supports defining request body provider and response decoder
-- Supports request retry feature, with default retry checker `DefaultRetryChecker`
-- Built-In: fom, json request body provider
-- Built-In: xml, json response body decoder
-- Support for directly parsing and sending `.http` file format requests
-- Supports download and upload file(s)
-- Built-in command tool:
-  - `cmd/greq` Lightweight HTTP request tool similar to curl and supports the IDEA `.http` file format
-  - `cmd/gbench` Lightweight HTTP request load testing tool similar to `ab` testing tool
+- Chainable request builder for `GET / POST / PUT / PATCH / DELETE / HEAD`
+- Pluggable middleware chain
+- Pluggable body **providers** (raw, JSON, form, multipart) and response **decoders** (JSON, XML)
+- Configurable **retry** with default checker (network errors, 5xx, 429) and per-request override
+- **Batch** concurrent requests with `ExecuteAll` / `ExecuteAny` semantics (`ext/batch`)
+- **Upload / download** helpers — single file, multi-file, multipart with form fields
+- Parse and send **IDE `.http` file** request format directly (`ext/httpfile`)
+- `BeforeSend` / `AfterSend` hooks and pluggable `Doer` for testing
+- Bundled CLI tools:
+  - [`cmd/greq`](cmd/greq) — curl-like HTTP client that understands `.http` files
+  - [`cmd/gbench`](cmd/gbench) — `ab`-like benchmark tool with progress bar and graceful Ctrl+C
 
 ## Install
+
+### Library
 
 ```bash
 go get github.com/gookit/greq
 ```
 
-### Install Tools
+### CLI tools
 
 ```bash
 # HTTP request tool
 go install github.com/gookit/greq/cmd/greq@latest
-# HTTP request testing
+# HTTP benchmark tool
 go install github.com/gookit/greq/cmd/gbench@latest
 ```
 
@@ -48,265 +50,341 @@ go install github.com/gookit/greq/cmd/gbench@latest
 package main
 
 import (
-	"github.com/gookit/goutil/dump"
-	"github.com/gookit/greq"
+    "fmt"
+
+    "github.com/gookit/greq"
 )
 
 func main() {
-	resp, err := greq.New("https://httpbin.org").
-		JSONType().
-		UserAgent("custom-client/1.0").
-		PostDo("/post", `{"name": "inhere"}`)
+    resp, err := greq.New("https://httpbin.org").
+        JSONType().
+        UserAgent("custom-client/1.0").
+        PostDo("/post", `{"name": "inhere"}`)
+    if err != nil {
+        panic(err)
+    }
 
-	if err != nil {
-		panic(err)
-	}
-
-	ret := make(map[string]any)
-	err = resp.Decode(&ret)
-	if err != nil {
-		panic(err)
-	}
-
-	dump.P(ret)
+    var ret map[string]any
+    if err := resp.Decode(&ret); err != nil {
+        panic(err)
+    }
+    fmt.Printf("%+v\n", ret)
 }
 ```
 
-Result:
-
-```text
-PRINT AT github.com/gookit/greq_test.TestHReq_Send(greq_test.go:73)
-map[string]interface {} { #len=4
-  "args": map[string]interface {} { #len=0
-  },
-  "headers": map[string]interface {} { #len=4
-    "Host": string("httpbin.org"), #len=11
-    "User-Agent": string("custom-client/1.0"), #len=17
-    "X-Amzn-Trace-Id": string("Root=1-61e4d41e-06e27ae12ff872a224373ca7"), #len=40
-    "Accept-Encoding": string("gzip"), #len=4
-  },
-  "origin": string("222.210.59.218"), #len=14
-  "url": string("https://httpbin.org/post"), #len=24
-},
-```
-
-## Request headers
+For one-off calls there are package-level shortcuts that share a default client:
 
 ```go
-greq.New("some.host/api").
-	SetHeader("req-id", "a string")
+resp, _ := greq.GetDo("https://httpbin.org/get")
+_, _ = greq.PostDo("https://httpbin.org/post", `{"key":"val"}`)
 ```
 
-Set multi at once:
+## Building requests
+
+`greq.New(baseURL)` returns a `*Client`. Calling any chainable method on
+the client (`JSONType`, `UserAgent`, `Get`, …) returns a `*Builder` you
+can keep configuring. The chain ends with a `*Do` method that actually
+sends the request.
+
+### Headers
+
+Per-request (returns a `*Builder`):
 
 ```go
-greq.New("some.host/api").
-	SetHeaders(map[string]string{
-		"req-id": "a string",
-	})
+greq.New("https://api.example.com").
+    UserAgent("my-client/1.0").
+    BasicAuth("user", "pass").
+    SetHeader("X-Request-ID", "abc-123").
+    SetHeaderMap(map[string]string{
+        "X-Trace-Id": "t-1",
+        "X-Tenant":   "acme",
+    }).
+    GetDo("/items")
 ```
 
-### Set content type
+Defaults applied to every request on a `*Client`:
 
 ```go
-greq.New("some.host/api").
-    ContentType("text/html")
+client := greq.New("https://api.example.com").
+    DefaultUserAgent("my-client/1.0").
+    DefaultHeader("X-Tenant", "acme")
 ```
 
-Built in `JSONType()` `FromType()` `XMLType()`
+### Content type and body
 
 ```go
-greq.New("some.host/api").JSONType()
+// JSON
+greq.New("https://api.example.com").
+    JSONType().
+    PostDo("/items", map[string]any{"name": "widget"})
+
+// Form
+greq.New("https://api.example.com").
+    FormType().
+    PostDo("/login", map[string]string{"user": "x", "pass": "y"})
+
+// Raw bytes / reader / string (BytesBody installs a body Provider;
+// pass nil as data so PostDo doesn't override it)
+greq.New("https://api.example.com").
+    WithContentType("application/octet-stream").
+    BytesBody([]byte{0x01, 0x02}).
+    PostDo("/upload-binary", nil)
 ```
 
+Built-in content-type helpers: `JSONType()`, `FormType()`, `XMLType()`,
+`MultipartType()`, `WithContentType(value)`.
 
-## Use middleware
+### Query parameters
 
 ```go
-	buf := &bytes.Buffer{}
-	mid0 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
-		buf.WriteString("MID0>>")
-		w, err := next(r)
-		buf.WriteString(">>MID0")
-		return w, err
-	})
-
-	mid1 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
-		buf.WriteString("MID1>>")
-		w, err := next(r)
-		buf.WriteString(">>MID1")
-		return w, err
-	})
-
-	mid2 := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
-		buf.WriteString("MID2>>")
-		w, err := next(r)
-		buf.WriteString(">>MID2")
-		return w, err
-	})
-
-	resp, err := greq.New("https://httpbin.org").
-		Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
-			tw := httptest.NewRecorder()
-			buf.WriteString("(CORE)")
-			return tw.Result(), nil
-		})).
-		Middleware(mid0, mid1, mid2).
-		GetDo("/get")
-
-    fmt.Println(buf.String())
+greq.New("https://api.example.com").
+    QueryParams(map[string]string{"page": "1", "size": "20"}).
+    GetDo("/items")
 ```
 
-**Output**:
+### Per-request options
 
-```text
-MID2>>MID1>>MID0>>(CORE)>>MID0>>MID1>>MID2
-```
-
-## More usage
-
-### Check response
-
-- `Response.IsOK() bool`
-- `Response.IsFail() bool`
-- `Response.IsEmptyBody() bool`
-- `Response.IsJSONType() bool`
-- `Response.IsContentType(prefix string) bool`
-
-### Get response data
-
-- `Response.ContentType() string`
-- `Response.Decode(ptr any) error`
-
-### Request to string
+For per-call configuration without re-chaining, use `OptionFn` helpers:
 
 ```go
-    str := greq.New("https://httpbin.org").
-		UserAgent("some-client/1.0").
-		BasicAuth("inhere", "some string").
-		JSONType().
-		Body("hi, with body").
-		Post("/post").
-		String()
-
-	fmt.Println(str)
-```
-
-**Output**:
-
-```text
-POST https://httpbin.org/post/ HTTP/1.1
-User-Agent: some-client/1.0
-Authorization: Basic aW5oZXJlOnNvbWUgc3RyaW5n
-Content-Type: application/json; charset=utf-8
-
-hi, with body
-```
-
-### Response to string
-
-`greq.Response.String()` can convert response to string.
-
-```go
-package main
-
-import (
-	"fmt"
-
-	"github.com/gookit/goutil/dump"
-	"github.com/gookit/greq"
+greq.GetDo("https://api.example.com/items",
+    greq.WithHeader("X-Trace", "abc"),
+    greq.WithTimeout(2000),          // 2s, in ms
+    greq.WithMaxRetries(3),
 )
+```
 
-func main() {
-	resp, err := greq.New("https://httpbin.org").
-		UserAgent("custom-client/1.0").
-		Send("/get")
+Available: `WithMethod`, `WithContentType`, `WithUserAgent`, `WithHeader`,
+`WithBody`, `WithData`, `WithTimeout`, `WithRetry`, `WithMaxRetries`,
+`WithRetryDelay`, `WithRetryChecker`.
 
-	if err != nil {
-		panic(err)
-	}
+## Handling responses
 
-	fmt.Print(resp.String())
+```go
+resp, err := greq.New("https://api.example.com").GetDo("/items")
+if err != nil { return err }
+
+if resp.IsFail() {                  // 4xx/5xx
+    return fmt.Errorf("status %d", resp.StatusCode)
+}
+
+// Decode JSON into a struct (uses Client.RespDecoder, JSON by default)
+var items []Item
+if err := resp.Decode(&items); err != nil {
+    return err
 }
 ```
 
-**Output**:
+Response helpers:
 
-```text
-HTTP/2.0 200 OK
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Credentials: true
-Date: Tue, 18 Jan 2022 04:52:39 GMT
+- Status: `IsOK`, `IsSuccessful`, `IsFail`, `IsEmptyBody`
+- Content type: `ContentType`, `IsContentType(prefix)`, `IsJSONType`
+- Body: `Decode(ptr)`, `BodyString` / `BodyStringE`, `BodyBuffer` / `BodyBufferE`
+- File output: `SaveFile(path)` (refuses non-2xx), `SaveBody(path)` (writes regardless)
+- Inspection: `String()` (full HTTP response as text), `HeaderString()`
+- Lifecycle: `CloseBody`, `QuietCloseBody`
+
+> The plain `BodyBuffer` / `BodyString` panic on a read error; prefer the
+> `…E` variants if you handle untrusted endpoints or care about
+> resilience under load.
+
+## Middleware
+
+```go
+mid := greq.MiddleFunc(func(r *http.Request, next greq.HandleFunc) (*greq.Response, error) {
+    start := time.Now()
+    resp, err := next(r)
+    log.Printf("%s %s -> %v in %s", r.Method, r.URL, err, time.Since(start))
+    return resp, err
+})
+
+greq.New("https://api.example.com").
+    Middleware(mid).
+    GetDo("/items")
+```
+
+Middlewares execute in declaration order on the request and unwind in
+reverse on the response.
+
+## Retry
+
+By default, no retries. Enable per-client:
+
+```go
+client := greq.New("https://api.example.com").
+    WithMaxRetries(3).
+    WithRetryDelay(200) // ms between attempts
+```
+
+`DefaultRetryChecker` retries on network errors, HTTP 5xx, and HTTP 429.
+
+Per-request override:
+
+```go
+greq.GetDo("https://api.example.com/flaky",
+    greq.WithRetry(5, 100, greq.DefaultRetryChecker),
+)
+```
+
+Custom retry policy:
+
+```go
+onlyOn503 := func(resp *greq.Response, err error, attempt int) bool {
+    return resp != nil && resp.StatusCode == 503
+}
+greq.New("https://api.example.com").
+    WithRetryConfig(3, 200, onlyOn503).
+    GetDo("/path")
+```
+
+## Upload / Download
+
+```go
+// Download to file (refuses non-2xx; use Response.SaveBody for unconditional)
+client := greq.New("https://example.com")
+n, err := client.Download("/file.zip", "./out.zip")
+
+// Single file
+resp, err := client.UploadFile("/upload", "file", "./photo.jpg")
+
+// Multiple files
+resp, err = client.UploadFiles("/upload", map[string]string{
+    "image1": "./a.jpg",
+    "image2": "./b.jpg",
+})
+
+// Files + extra form fields
+resp, err = client.UploadWithData("/upload",
+    map[string]string{"avatar": "./me.png"},
+    map[string]string{"user_id": "42"},
+)
+```
+
+See [docs/upload-download.md](docs/upload-download.md) for resumable
+download, progress callbacks, and advanced multipart options.
+
+## Batch requests (`ext/batch`)
+
+Concurrent fan-out with a worker pool:
+
+```go
+import "github.com/gookit/greq/ext/batch"
+
+// Wait for all
+results := batch.GetAll([]string{
+    "https://api.example.com/a",
+    "https://api.example.com/b",
+    "https://api.example.com/c",
+})
+for id, r := range results {
+    fmt.Println(id, r.Response.StatusCode, r.Duration)
+}
+
+// Return the first success (cancels the rest)
+winner := batch.GetAny([]string{
+    "https://mirror1.example.com/file",
+    "https://mirror2.example.com/file",
+})
+
+// Mixed methods, custom processor
+bp := batch.NewProcessor(
+    batch.WithMaxConcurrency(8),
+    batch.WithBatchTimeout(10 * time.Second),
+)
+bp.AddGet("list", "https://api.example.com/list")
+bp.AddPost("submit", "https://api.example.com/submit", map[string]string{"k": "v"})
+all := bp.ExecuteAll()
+```
+
+If every request fails, `ExecuteAny` returns `nil` promptly rather than
+waiting for the batch timeout.
+
+## `.http` file format
+
+`greq` can parse and send the IDE `.http` request format directly:
+
+```go
+raw := `POST https://api.example.com/items?tenant=${tenant}
 Content-Type: application/json
-Content-Length: 272
-Server: gunicorn/19.9.0
+Authorization: Bearer ${token}
 
-{
-  "args": {},
-  "headers": {
-    "Accept-Encoding": "gzip",
-    "Host": "httpbin.org",
-    "User-Agent": "custom-client/1.0",
-    "X-Amzn-Trace-Id": "Root=1-61e64797-3e428a925f7709906a8b7c01"
-  },
-  "origin": "222.210.59.218",
-  "url": "https://httpbin.org/get"
-}
+{"name": "widget"}`
+
+resp, err := greq.New().SendRaw(raw, map[string]string{
+    "tenant": "acme",
+    "token":  os.Getenv("API_TOKEN"),
+})
 ```
 
-## Command Tool Usage
+Variables use the `${name}` syntax. Unresolved variables fall back to
+process environment variables, then are left as the literal name. See
+`ext/httpfile` for direct access to the parser.
 
-### `greq` Tool
+## Custom Doer / testing
 
-`cmd/greq` Lightweight HTTP request tool similar to curl and supports the IDEA `.http` file format
+`greq.Client.Doer(...)` swaps the underlying transport — useful for
+mocking in tests:
 
-**Install tool**:
+```go
+import "github.com/gookit/goutil/netutil/httpreq"
+
+client := greq.New("https://api.example.com").
+    Doer(httpreq.DoerFunc(func(req *http.Request) (*http.Response, error) {
+        // return a recorded response without hitting the network
+        return httptest.NewRecorder().Result(), nil
+    }))
+```
+
+The same `BeforeSend` / `AfterSend` hooks are available on `Client` for
+request signing, logging, and metric collection.
+
+## Cloning a client
+
+`Sub()` returns a shallow copy with its own headers map, suitable for
+per-call customization without affecting the parent:
+
+```go
+base := greq.New("https://api.example.com").
+    DefaultUserAgent("svc/1.0").
+    WithMaxRetries(3)
+
+sub := base.Sub().DefaultHeader("X-Trace", "abc-123")
+sub.GetDo("/items")   // inherits retries, user-agent; adds trace header
+```
+
+## CLI tools
+
+### `greq` — HTTP client
 
 ```bash
 go install github.com/gookit/greq/cmd/greq@latest
-```
 
-**Show options**:
-
-```bash
-greq -h
-```
-
-**Usage examples**:
-
-```bash
 greq https://httpbin.org/get
-greq -X POST -d '{"name": "inhere"}' https://httpbin.org/post
+greq -X POST -d '{"name":"inhere"}' https://httpbin.org/post
+greq -r req.http                          # send an .http file
+greq -r req.http -V token=$API_TOKEN      # with variables
+greq -O https://example.com/file.zip      # treat URL as download
 ```
 
-### `gbench` Tool
+Full flags: `greq -h`.
 
-`cmd/gbench` Lightweight HTTP request load testing tool similar to `ab` testing tool
-
-**Install tool**:
+### `gbench` — benchmark tool
 
 ```bash
 go install github.com/gookit/greq/cmd/gbench@latest
+
+gbench -n 1000 -c 10 https://example.com
+gbench -z 30s  -c 20 https://example.com           # run for 30 seconds
+gbench -n 1000 -c 10 -m POST -d '{"k":"v"}' https://example.com/api
+gbench -n 100  -c 5 -o results.txt https://example.com
 ```
 
-**Show options**:
+`gbench` shows a live progress bar and honors Ctrl+C by stopping
+gracefully and printing partial results.
 
-```bash
-gbench -h
-```
+## See also
 
-**Usage examples**：
-
-```bash
-gbench -c 10 -n 100 https://httpbin.org/get
-gbench -c 10 -n 100 -d '{"name": "inhere"}' https://httpbin.org/post
-```
-
-## Refers
-
-- https://github.com/dghubble/sling
-- https://github.com/zhshch2002/goreq
-- https://github.com/go-resty/resty
-- https://github.com/monaco-io/request
-
-[1]: https://github.com/dghubble/sling
+- [dghubble/sling](https://github.com/dghubble/sling)
+- [zhshch2002/goreq](https://github.com/zhshch2002/goreq)
+- [go-resty/resty](https://github.com/go-resty/resty)
+- [monaco-io/request](https://github.com/monaco-io/request)
