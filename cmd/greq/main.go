@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gookit/cliui/interact"
 	"github.com/gookit/goutil/cflag"
 	"github.com/gookit/goutil/netutil/httpctype"
 	"github.com/gookit/goutil/netutil/httpreq"
@@ -70,11 +71,11 @@ func main() {
 	cmd.Var(&cmdOpts.formData, "form", `Custom HTTP form data, allow multi. eg: "key=value";;F`)
 	cmd.IntVar(&cmdOpts.timeout, "timeout", 30, "Request timeout in seconds;;t")
 	cmd.StringVar(&cmdOpts.output, "output", "", "Output file for response;;o")
-	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file
-With request match:
- filepath#keywords  - match request by keywords in .http file content,
-                      multiple keywords separated by comma ','
-                      on exists multiple requests, will prompt to select one. // TODO
+	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file.
+Request matching:
+ filepath#keywords  - match request by keywords in the file (comma-separated).
+                      When multiple requests match, an interactive prompt
+                      will let you pick one.
 ;;r`)
 	cmd.Var(&cmdOpts.httpVars, "var", `(.http file)HTTP request variables, allow multi. eg: "key=value";;V`)
 
@@ -160,9 +161,9 @@ func handleRawRequest(filename string) error {
 		return fmt.Errorf("failed to parse HTTP file: %v", err)
 	}
 
-	request := hf.SearchOne(keywords...)
-	if request == nil {
-		return fmt.Errorf("no request found with keywords: %v", keywords)
+	request, err := pickRequest(hf, keywords)
+	if err != nil {
+		return err
 	}
 
 	// 应用变量替换
@@ -588,4 +589,50 @@ func formatBytes(bytes int) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// pickRequest 从 .http 文件中按 keywords 过滤请求；
+//   - 0 命中：报错
+//   - 1 命中：直接返回
+//   - 多命中：使用 cliui interact.SelectOne 让用户从命中列表里选一个
+func pickRequest(hf *httpfile.HTTPFile, keywords []string) (*httpfile.HTTPRequest, error) {
+	matches := hf.SearchName(keywords...)
+	if len(matches) == 0 {
+		// 无 keywords 时，SearchName 返回全部 — 退化到老行为：第一条；
+		// 但若 keywords 非空仍 0 命中说明真没匹配。
+		if len(keywords) == 0 {
+			if len(hf.Requests) == 0 {
+				return nil, fmt.Errorf("no request found in %s", hf.FilePath)
+			}
+			matches = hf.Requests
+		} else {
+			return nil, fmt.Errorf("no request matched keywords: %v", keywords)
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+
+	// 多命中 — 弹选择菜单。key 用索引字符串以保持稳定。
+	opts := make(map[string]string, len(matches))
+	order := make([]string, 0, len(matches))
+	for i, req := range matches {
+		key := fmt.Sprintf("%d", i)
+		label := req.Name
+		if label == "" {
+			label = fmt.Sprintf("%s %s", req.Method, req.URL)
+		}
+		opts[key] = label
+		order = append(order, key)
+	}
+	title := fmt.Sprintf("Multiple requests matched (%d), select one:", len(matches))
+	chosen := interact.SelectOne(title, opts, order[0])
+	if chosen == "" {
+		return nil, fmt.Errorf("no selection made")
+	}
+	idx, err := strconv.Atoi(chosen)
+	if err != nil || idx < 0 || idx >= len(matches) {
+		return nil, fmt.Errorf("invalid selection: %q", chosen)
+	}
+	return matches[idx], nil
 }
