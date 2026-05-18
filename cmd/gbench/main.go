@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gookit/cliui/progress"
 	"github.com/gookit/goutil/cflag"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/timex"
@@ -161,10 +162,36 @@ func runBenchmark(c *cflag.CFlags) error {
 	ccolor.Printf("  The  QPS  Limit: %d\n", benchOpts.qpsLimit)
 	ccolor.Printf("  Request Timeout: %d seconds\n", benchOpts.timeout)
 
-	// 显示简单的 cli ascii 进度条
+	// 进度条由 cliui/progress 渲染，bench 通过 OnProgress 回调驱动。
+	// 用 Duration 模式时按"已用秒数"做 step，否则按"已完成请求数"。
+	var bar *progress.Progress
 	if benchOpts.progress {
 		fmt.Println()
-		hb.SetShowProgress(true)
+		maxStep := benchOpts.number
+		if duration > 0 {
+			maxStep = int(duration.Seconds())
+			if maxStep <= 0 {
+				maxStep = 1
+			}
+		}
+		bar = progress.Bar(maxStep)
+		bar.Start()
+
+		hb.OnProgress(func(s bench.Snapshot) {
+			var step uint
+			if s.Duration > 0 {
+				step = uint(s.Elapsed.Seconds())
+			} else {
+				step = uint(s.Completed)
+			}
+			if int(step) > maxStep {
+				step = uint(maxStep)
+			}
+			bar.AdvanceTo(step)
+			if s.Done {
+				bar.Finish()
+			}
+		})
 	} else {
 		ccolor.Infof("Benchmarking ... please wait.\n")
 	}
