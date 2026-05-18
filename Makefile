@@ -22,7 +22,7 @@ GOMOD := $(GOCMD) mod
 BINS := greq gbench
 
 # Build directory
-BUILD_DIR := bin
+BUILD_DIR := cmd
 
 # Version info (can be overridden by env vars or git tags)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -61,7 +61,7 @@ build: ## Build all binaries for current platform
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "  Building $$bin..."; \
-		$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin$(BINARY_EXT) ./cmd/$$bin; \
+		(cd cmd/$$bin && $(GOBUILD) $(LDFLAGS) -o ../$$bin$(BINARY_EXT) .) || exit 1; \
 	done
 	@echo "Build complete. Binaries in $(BUILD_DIR)/"
 
@@ -69,14 +69,14 @@ build: ## Build all binaries for current platform
 build-greq: ## Build greq binary only
 	@echo "Building greq..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/greq$(BINARY_EXT) ./cmd/greq
+	cd cmd/greq && $(GOBUILD) $(LDFLAGS) -o ../greq$(BINARY_EXT) .
 	upx -6 --no-progress $(BUILD_DIR)/greq$(BINARY_EXT)
 
 .PHONY: build-gbench
 build-gbench: ## Build gbench binary only
 	@echo "Building gbench..."
 	@mkdir -p $(BUILD_DIR)
-	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/gbench$(BINARY_EXT) ./cmd/gbench
+	cd cmd/gbench && $(GOBUILD) $(LDFLAGS) -o ../gbench$(BINARY_EXT) .
 	upx -6 --no-progress $(BUILD_DIR)/gbench$(BINARY_EXT)
 
 # ============================================================================
@@ -91,7 +91,7 @@ build-linux: ## Build binaries for Linux (amd64, arm64)
 	@for arch in amd64 arm64; do \
 		echo "  Building for linux/$$arch..."; \
 		for bin in $(BINS); do \
-			GOOS=linux GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-linux-$$arch ./cmd/$$bin; \
+			(cd cmd/$$bin && GOOS=linux GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-$$arch .) || exit 1; \
 		done; \
 	done
 	@echo "Linux build complete."
@@ -101,7 +101,7 @@ build-linux-amd64: ## Build binaries for Linux amd64
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/amd64..."; \
-		GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-linux-amd64 ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-amd64 .) || exit 1; \
 	done
 
 .PHONY: build-linux-arm64
@@ -109,7 +109,7 @@ build-linux-arm64: ## Build binaries for Linux arm64
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/arm64..."; \
-		GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-linux-arm64 ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-arm64 .) || exit 1; \
 	done
 
 # macOS builds
@@ -120,7 +120,7 @@ build-darwin: ## Build binaries for macOS (amd64, arm64)
 	@for arch in amd64 arm64; do \
 		echo "  Building for darwin/$$arch..."; \
 		for bin in $(BINS); do \
-			GOOS=darwin GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-darwin-$$arch ./cmd/$$bin; \
+			(cd cmd/$$bin && GOOS=darwin GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-$$arch .) || exit 1; \
 		done; \
 	done
 	@echo "macOS build complete."
@@ -130,7 +130,7 @@ build-darwin-amd64: ## Build binaries for macOS amd64 (Intel)
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/amd64..."; \
-		GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-darwin-amd64 ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-amd64 .) || exit 1; \
 	done
 
 .PHONY: build-darwin-arm64
@@ -138,7 +138,7 @@ build-darwin-arm64: ## Build binaries for macOS arm64 (Apple Silicon)
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/arm64..."; \
-		GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-darwin-arm64 ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-arm64 .) || exit 1; \
 	done
 
 # Windows builds
@@ -149,7 +149,7 @@ build-windows: ## Build binaries for Windows (amd64, arm64)
 	@for arch in amd64 arm64; do \
 		echo "  Building for windows/$$arch..."; \
 		for bin in $(BINS); do \
-			GOOS=windows GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-windows-$$arch.exe ./cmd/$$bin; \
+			(cd cmd/$$bin && GOOS=windows GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-$$arch.exe .) || exit 1; \
 		done; \
 	done
 	@echo "Windows build complete."
@@ -159,7 +159,7 @@ build-windows-amd64: ## Build binaries for Windows amd64
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for windows/amd64..."; \
-		GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-windows-amd64.exe ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-amd64.exe .) || exit 1; \
 	done
 
 .PHONY: build-windows-arm64
@@ -167,12 +167,12 @@ build-windows-arm64: ## Build binaries for Windows arm64
 	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for windows/arm64..."; \
-		GOOS=windows GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$$bin-windows-arm64.exe ./cmd/$$bin; \
+		(cd cmd/$$bin && GOOS=windows GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-arm64.exe .) || exit 1; \
 	done
 
 # Build all platforms
 .PHONY: build-all
-build-all: build-linux build-darwin build-windows-amd64 ## Build binaries for all platforms
+build-all: build-linux build-darwin build-windows ## Build binaries for all platforms
 	@echo "All platform builds complete."
 	@ls -la $(BUILD_DIR)/
 
@@ -181,8 +181,12 @@ build-all: build-linux build-darwin build-windows-amd64 ## Build binaries for al
 # ============================================================================
 
 .PHONY: test
-test: ## Run all tests
+test: ## Run all tests (library + cmd submodules)
 	$(GOTEST) $(TEST_FLAGS) ./...
+	@for bin in $(BINS); do \
+		echo "  Testing cmd/$$bin..."; \
+		(cd cmd/$$bin && $(GOTEST) $(TEST_FLAGS) ./...) || exit 1; \
+	done
 
 .PHONY: test-coverage
 test-coverage: ## Run tests with coverage report
@@ -212,18 +216,18 @@ install: ## Install binaries to GOPATH/bin
 	@echo "Installing binaries..."
 	@for bin in $(BINS); do \
 		echo "  Installing $$bin..."; \
-		$(GOCMD) install ./cmd/$$bin; \
+		(cd cmd/$$bin && $(GOCMD) install $(LDFLAGS) .) || exit 1; \
 	done
 	@echo "Installation complete."
 
 .PHONY: install-greq
 install-greq: ## Install greq to GOPATH/bin
-	$(GOCMD) install $(LDFLAGS) ./cmd/greq
+	cd cmd/greq && $(GOCMD) install $(LDFLAGS) .
 	upx -6 --no-progress $(GOPATH)/bin/greq$(BINARY_EXT)
 
 .PHONY: install-gbench
 install-gbench: ## Install gbench to GOPATH/bin
-	$(GOCMD) install $(LDFLAGS) ./cmd/gbench
+	cd cmd/gbench && $(GOCMD) install $(LDFLAGS) .
 	upx -6 --no-progress $(GOPATH)/bin/gbench$(BINARY_EXT)
 
 # ============================================================================
@@ -271,16 +275,17 @@ help: ## Show this help message
 # ============================================================================
 
 .PHONY: release
-release: build-all ## Create release archives for all platforms
+release: build-all ## Create release archives for all platforms (tar.gz for linux/macOS, zip for Windows)
 	@echo "Creating release archives..."
 	@mkdir -p release
 	@cd $(BUILD_DIR) && \
 	for bin in $(BINS); do \
-		zip ../release/$$bin-$(VERSION)-linux-amd64.zip $$bin-linux-amd64; \
-		zip ../release/$$bin-$(VERSION)-linux-arm64.zip $$bin-linux-arm64; \
-		zip ../release/$$bin-$(VERSION)-darwin-amd64.zip $$bin-darwin-amd64; \
-		zip ../release/$$bin-$(VERSION)-darwin-arm64.zip $$bin-darwin-arm64; \
-		zip ../release/$$bin-$(VERSION)-windows-amd64.zip $$bin-windows-amd64.exe; \
-		zip ../release/$$bin-$(VERSION)-windows-arm64.zip $$bin-windows-arm64.exe; \
+		tar -czf ../release/$$bin-$(VERSION)-linux-amd64.tar.gz $$bin-linux-amd64; \
+		tar -czf ../release/$$bin-$(VERSION)-linux-arm64.tar.gz $$bin-linux-arm64; \
+		tar -czf ../release/$$bin-$(VERSION)-darwin-amd64.tar.gz $$bin-darwin-amd64; \
+		tar -czf ../release/$$bin-$(VERSION)-darwin-arm64.tar.gz $$bin-darwin-arm64; \
+		zip -q ../release/$$bin-$(VERSION)-windows-amd64.zip $$bin-windows-amd64.exe; \
+		zip -q ../release/$$bin-$(VERSION)-windows-arm64.zip $$bin-windows-arm64.exe; \
 	done
 	@echo "Release archives created in release/"
+	@ls -la release/

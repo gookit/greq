@@ -17,17 +17,35 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Go Faster
+        uses: WillAbides/setup-go-faster@v1.15.0
+        timeout-minutes: 3
+        with:
+          go-version: "stable"
+
       - name: Setup ENV
         # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
         run: |
           echo "RELEASE_TAG=${GITHUB_REF:10}" >> $GITHUB_ENV
           echo "RELEASE_NAME=$GITHUB_WORKFLOW" >> $GITHUB_ENV
 
+      - name: Mod tidy (cmd submodules)
+        # Each (cd ...) is a subshell so the second cd starts from the
+        # workspace root, not from inside cmd/greq.
+        run: |
+          (cd cmd/greq && go mod tidy)
+          (cd cmd/gbench && go mod tidy)
+
+      - name: Build bin packages
+        run: |
+          make release
+          ls -alh ./release
+
       - name: Generate changelog
         run: |
           curl https://github.com/gookit/gitw/releases/latest/download/chlog-linux-amd64 -L -o /usr/local/bin/chlog
           chmod a+x /usr/local/bin/chlog
-          chlog -c .github/changelog.yml -o changelog.md prev last 
+          chlog -c .github/changelog.yml -o changelog.md prev last
 
       # https://github.com/softprops/action-gh-release
       - name: Create release and upload assets
@@ -39,3 +57,5 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           body_path: changelog.md
           token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            release/*

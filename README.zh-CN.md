@@ -38,7 +38,8 @@ go get github.com/gookit/greq
 Install by [Eget](https://github.com/inherelab/eget):
 
 ```bash
-eget install --asset "greq,gbench" gookit/greq
+eget install gookit/greq
+eget install --name gbench gookit/greq
 ```
 
 Install by Go:

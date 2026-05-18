@@ -18,7 +18,10 @@
 .DS_Store
 #go.sum
 vendor/
+dist/
 bin/
 .vscode/
 .trae/
 .xenv.toml
+cmd/greq-*
+cmd/gbench-*
