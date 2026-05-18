@@ -93,6 +93,9 @@ func New(baseURL ...string) *Client {
 	if len(baseURL) > 0 {
 		h.BaseURL = baseURL[0]
 	}
+	// Build the handler chain once at construction time. Concurrent requests
+	// only READ h.handler; rebuilding happens only when Middlewares() is called.
+	h.wrapMiddlewares()
 	return h
 }
 
@@ -104,7 +107,7 @@ func (h *Client) Sub() *Client {
 		headerCopy[k] = v
 	}
 
-	return &Client{
+	sub := &Client{
 		doer:         h.doer,
 		Method:       h.Method,
 		BaseURL:      h.BaseURL,
@@ -118,6 +121,8 @@ func (h *Client) Sub() *Client {
 		BeforeSend:   h.BeforeSend,
 		AfterSend:    h.AfterSend,
 	}
+	sub.wrapMiddlewares() // build the sub-client's own handler chain
+	return sub
 }
 
 //
@@ -228,9 +233,13 @@ func (h *Client) Uses(middles ...Middleware) *Client { return h.Middlewares(midd
 // Middleware add one or multi middlewares
 func (h *Client) Middleware(middles ...Middleware) *Client { return h.Middlewares(middles...) }
 
-// Middlewares add one or multi middlewares
+// Middlewares add one or multi middlewares.
+//
+// Not safe to call concurrently with in-flight requests — call during setup
+// before requests are dispatched.
 func (h *Client) Middlewares(middles ...Middleware) *Client {
 	h.middles = append(h.middles, middles...)
+	h.wrapMiddlewares() // rebuild the chain now so the request hot path stays read-only
 	return h
 }
 
@@ -584,12 +593,10 @@ func (h *Client) SendRequest(req *http.Request) (*Response, error) {
 	return h.sendRequestWithRetry(req, 0)
 }
 
-// sendRequestWithRetry send request with retry logic
+// sendRequestWithRetry send request with retry logic.
+// h.handler is built in New/Sub/Middlewares; this hot path only reads it.
 func (h *Client) sendRequestWithRetry(req *http.Request, attempt int) (*Response, error) {
 	start := time.Now()
-
-	// wrap middlewares, and will wrap http.Response to Response
-	h.wrapMiddlewares()
 
 	// call before send.
 	if h.BeforeSend != nil {
