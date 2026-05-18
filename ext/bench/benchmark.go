@@ -39,9 +39,8 @@ type HTTPBench struct {
 	failReqs    int64
 	statusCodes map[int]int64
 	// 响应时间统计
-	respTimes []time.Duration
+	respTimes    []time.Duration
 	showProgress bool // 是否显示进度条
-	progressOK   bool // 进度是否已经完成
 
 	// 客户端
 	client *greq.Client
@@ -153,43 +152,31 @@ func (b *HTTPBench) initClient() {
 	}
 }
 
-// ShowProgressBar 显示简单的 cli ascii 进度条
+// showProgressBar render a single-line progress bar using CR + ESC[K to clear
+// previous render. Safe to call repeatedly; renders current snapshot every time.
 func (b *HTTPBench) showProgressBar() {
-	if b.totalReqs == 0 || b.progressOK {
-		return
-	}
+	completed := atomic.LoadInt64(&b.totalReqs)
+	elapsed := time.Since(b.startTime)
 
-	duration := time.Since(b.startTime)
-	completed := float64(b.totalReqs)
-	total := float64(b.Number)
-
-	// 如果设置了测试时长，则使用时间进度
+	var progress float64
 	if b.Duration > 0 {
-		total = float64(b.Duration.Seconds())
-		completed = float64(duration.Seconds())
+		if b.Duration.Seconds() > 0 {
+			progress = elapsed.Seconds() / b.Duration.Seconds()
+		}
+	} else if b.Number > 0 {
+		progress = float64(completed) / float64(b.Number)
 	}
-
-	// 计算进度百分比
-	progress := completed / total
 	if progress > 1.0 {
 		progress = 1.0
 	}
-	b.progressOK = progress >= 1.0
 
-	// 进度条长度
-	barWidth := 50
-	// 构建进度条
-	bar := buildProgressBar(progress, barWidth)
-
-	// 显示进度信息
+	bar := buildProgressBar(progress, 50)
 	percent := int(progress * 100)
-	ccolor.Printf("\r<green1>Progress</>: %s %d%% | Requests: %d/%d | Duration: %s",
-		bar, percent, b.totalReqs, b.Number, duration.Round(time.Second))
 
-	// 如果测试完成，换行
-	if progress >= 1.0 {
-		fmt.Println()
-	}
+	// \r returns the cursor to start, \x1b[K erases from cursor to EOL —
+	// prevents stale chars when the line shrinks (e.g. Duration digit count drops).
+	ccolor.Printf("\r\x1b[K<green1>Progress</>: %s %d%% | Requests: %d/%d | Duration: %s",
+		bar, percent, completed, b.Number, elapsed.Round(time.Second))
 }
 
 // buildProgressBar 构建进度条
@@ -209,78 +196,74 @@ func buildProgressBar(progress float64, barWidth int) string {
 	return bar
 }
 
-// Run 执行基准测试
+// Run executes the benchmark with a background context. Equivalent to RunCtx(context.Background()).
 func (b *HTTPBench) Run() (*BenchResult, error) {
+	return b.RunCtx(context.Background())
+}
+
+// RunCtx executes the benchmark with the given parent context. Cancel the context
+// to stop the test gracefully — workers finish in-flight requests then exit, and
+// partial results are returned.
+func (b *HTTPBench) RunCtx(parent context.Context) (*BenchResult, error) {
 	b.initClient()
 	b.startTime = time.Now()
 
-	// 设置上下文
-	b.ctx, b.cancel = context.WithCancel(context.Background())
+	b.ctx, b.cancel = context.WithCancel(parent)
 	defer b.cancel()
 
-	// 如果设置了测试时长，使用定时器
+	// If a test duration is set, layer a timeout on top of the parent cancel.
 	if b.Duration > 0 {
 		b.ctx, b.cancel = context.WithTimeout(b.ctx, b.Duration)
 	}
 
-	// 设置QPS限制
 	if b.QPSLimit > 0 {
 		interval := time.Second / time.Duration(b.QPSLimit)
 		b.rateLimiter = time.NewTicker(interval)
 		defer b.rateLimiter.Stop()
 	}
 
-	// 启动工作协程
 	var wg sync.WaitGroup
 	workCh := make(chan struct{}, b.Concurrency)
 
-	// 启动统计协程
-	resultCh := make(chan *benchReqResult, b.Concurrency*10)
-	go b.collectResults(resultCh)
-
-	// 启动进度显示协程
-	progressTicker := time.NewTicker(100 * time.Millisecond)
-	defer progressTicker.Stop()
-	go func() {
-		for {
-			select {
-			case <-progressTicker.C:
-				b.showProgressBar()
-			case <-b.ctx.Done():
-				return
+	// Progress display goroutine — 200ms is smooth enough but ~5x less terminal churn than 100ms.
+	// progressDone lets us deterministically wait for the goroutine to exit before the
+	// final render, so it can't print stale progress text into the results output.
+	var progressDone chan struct{}
+	if b.showProgress {
+		progressTicker := time.NewTicker(200 * time.Millisecond)
+		defer progressTicker.Stop()
+		progressDone = make(chan struct{})
+		go func() {
+			defer close(progressDone)
+			for {
+				select {
+				case <-progressTicker.C:
+					b.showProgressBar()
+				case <-b.ctx.Done():
+					return
+				}
 			}
-		}
-	}()
-
-	// 启动工作协程
-	for i := 0; i < b.Concurrency; i++ {
-		wg.Add(1)
-		go b.worker(workCh, resultCh, &wg)
+		}()
 	}
 
-	// 发送任务
+	for i := 0; i < b.Concurrency; i++ {
+		wg.Add(1)
+		go b.worker(workCh, &wg)
+	}
 	go b.dispatcher(workCh)
 
-	// 等待所有工作完成
 	wg.Wait()
-	close(resultCh)
-
-	// 等待统计协程完成
-	time.Sleep(100 * time.Millisecond)
-
-	// 显示最终进度
-	b.showProgressBar()
 	b.endTime = time.Now()
 
-	return b.generateResult(), nil
-}
+	// Render the final state (may be partial if context was cancelled) and add a newline.
+	if b.showProgress {
+		b.cancel()      // stop the progress goroutine
+		<-progressDone  // wait for it to actually exit before final render
+		b.showProgressBar()
+		fmt.Println()
+	}
 
-// benchReqResult 保存单个请求的结果
-type benchReqResult struct {
-	statusCode int
-	duration   time.Duration
-	bytes      int64
-	err        error
+	return b.generateResult(), nil
 }
 
 // dispatcher 任务分发器
@@ -314,17 +297,16 @@ func (b *HTTPBench) dispatcher(workCh chan<- struct{}) {
 }
 
 // worker 工作协程
-func (b *HTTPBench) worker(workCh <-chan struct{}, resultCh chan<- *benchReqResult, wg *sync.WaitGroup) {
+func (b *HTTPBench) worker(workCh <-chan struct{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for range workCh {
-		result := b.doRequest()
-		resultCh <- result
+		b.doRequest()
 	}
 }
 
-// doRequest 执行单个请求
-func (b *HTTPBench) doRequest() *benchReqResult {
+// doRequest 执行单个请求，统计直接写入 b 的计数器
+func (b *HTTPBench) doRequest() {
 	start := time.Now()
 
 	var err error
@@ -339,18 +321,15 @@ func (b *HTTPBench) doRequest() *benchReqResult {
 	}
 
 	duration := time.Since(start)
-	result := &benchReqResult{
-		duration: duration,
-		err:      err,
-	}
 
 	if err != nil {
-		result.statusCode = 0
 		atomic.AddInt64(&b.failReqs, 1)
-		return result
+		// resp may be non-nil even with err (e.g. failed redirect) — close it to avoid FD leak under high -n.
+		if resp != nil {
+			resp.QuietCloseBody()
+		}
+		return
 	}
-
-	result.statusCode = resp.StatusCode
 
 	// 统计状态码
 	b.mu.Lock()
@@ -361,7 +340,6 @@ func (b *HTTPBench) doRequest() *benchReqResult {
 	// 统计字节数
 	if resp.Body != nil {
 		bodyBytes := resp.BodyBuffer().Bytes()
-		result.bytes = int64(len(bodyBytes))
 		atomic.AddInt64(&b.totalBytes, int64(len(bodyBytes)))
 	}
 
@@ -372,14 +350,6 @@ func (b *HTTPBench) doRequest() *benchReqResult {
 	}
 
 	resp.CloseBody()
-	return result
-}
-
-// collectResults 收集结果
-func (b *HTTPBench) collectResults(resultCh <-chan *benchReqResult) {
-	for result := range resultCh {
-		_ = result // 结果已经在doRequest中统计了
-	}
 }
 
 // generateResult 生成最终结果
@@ -390,14 +360,17 @@ func (b *HTTPBench) generateResult() *BenchResult {
 	defer b.mu.Unlock()
 
 	result := &BenchResult{
-		URL:            b.URL,
-		TotalReqs:      b.totalReqs,
-		SuccessReqs:    b.successReqs,
-		FailReqs:       b.failReqs,
-		Duration:       duration,
-		StatusCodes:    make(map[int]int64),
-		ReqsPerSecond:  float64(b.totalReqs) / duration.Seconds(),
-		BytesPerSecond: float64(b.totalBytes) / duration.Seconds(),
+		URL:         b.URL,
+		TotalReqs:   b.totalReqs,
+		SuccessReqs: b.successReqs,
+		FailReqs:    b.failReqs,
+		Duration:    duration,
+		StatusCodes: make(map[int]int64),
+	}
+	// Guard against divide-by-zero when test was cancelled before any request completed.
+	if secs := duration.Seconds(); secs > 0 {
+		result.ReqsPerSecond = float64(b.totalReqs) / secs
+		result.BytesPerSecond = float64(b.totalBytes) / secs
 	}
 
 	// 复制状态码统计
@@ -432,8 +405,11 @@ func (r *BenchResult) String() string {
 	// 设置 buf 初始容量
 	buf := make([]byte, 0, 256)
 
-	// 计算成功请求比例
-	successRatio := float64(r.SuccessReqs) / float64(r.TotalReqs)
+	// 计算成功请求比例 (avoid NaN when interrupted before any request)
+	var successRatio float64
+	if r.TotalReqs > 0 {
+		successRatio = float64(r.SuccessReqs) / float64(r.TotalReqs)
+	}
 
 	// buf = append(buf, fmt.Sprintf("Benchmarking %s\n", r.URL)...)
 	buf = append(buf, fmt.Sprintf("Total      requests: %d\n", r.TotalReqs)...)

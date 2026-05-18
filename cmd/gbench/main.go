@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gookit/goutil/cflag"
@@ -147,11 +150,31 @@ func runBenchmark(c *cflag.CFlags) error {
 		ccolor.Infof("Benchmarking ... please wait.\n")
 	}
 
+	// Wire Ctrl+C / SIGTERM into a cancellable context so the test can be
+	// interrupted gracefully and still print partial results — without this,
+	// large -n values would leave the user stuck watching the progress bar.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+	interrupted := false
+	go func() {
+		if _, ok := <-sigCh; !ok {
+			return
+		}
+		interrupted = true
+		ccolor.Yellowf("\nInterrupt received, stopping benchmark and showing partial results...\n")
+		cancel()
+	}()
+
 	// 执行测试
-	result, err := hb.Run()
+	result, err := hb.RunCtx(ctx)
 	if err != nil {
 		return fmt.Errorf("benchmark failed: %v", err)
 	}
+	_ = interrupted // reserved for future use (e.g. non-zero exit on interrupt)
 
 	// 输出结果
 	output := result.String()
