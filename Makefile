@@ -38,13 +38,7 @@ LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_CO
 # Platform-specific variables
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
-
-# Binary extension for Windows
-ifeq ($(GOOS),windows)
-    BINARY_EXT := .exe
-else
-    BINARY_EXT :=
-endif
+BINARY_EXT = $(shell go env GOEXE)
 
 # Race detector support (requires CGO on Windows)
 ifeq ($(GOOS),windows)
@@ -76,12 +70,14 @@ build-greq: ## Build greq binary only
 	@echo "Building greq..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/greq$(BINARY_EXT) ./cmd/greq
+	upx -6 --no-progress $(BUILD_DIR)/greq$(BINARY_EXT)
 
 .PHONY: build-gbench
 build-gbench: ## Build gbench binary only
 	@echo "Building gbench..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/gbench$(BINARY_EXT) ./cmd/gbench
+	upx -6 --no-progress $(BUILD_DIR)/gbench$(BINARY_EXT)
 
 # ============================================================================
 # Cross-platform build targets
@@ -176,7 +172,7 @@ build-windows-arm64: ## Build binaries for Windows arm64
 
 # Build all platforms
 .PHONY: build-all
-build-all: build-linux build-darwin build-windows ## Build binaries for all platforms
+build-all: build-linux build-darwin build-windows-amd64 ## Build binaries for all platforms
 	@echo "All platform builds complete."
 	@ls -la $(BUILD_DIR)/
 
@@ -223,10 +219,12 @@ install: ## Install binaries to GOPATH/bin
 .PHONY: install-greq
 install-greq: ## Install greq to GOPATH/bin
 	$(GOCMD) install $(LDFLAGS) ./cmd/greq
+	upx -6 --no-progress $(GOPATH)/bin/greq$(BINARY_EXT)
 
 .PHONY: install-gbench
 install-gbench: ## Install gbench to GOPATH/bin
 	$(GOCMD) install $(LDFLAGS) ./cmd/gbench
+	upx -6 --no-progress $(GOPATH)/bin/gbench$(BINARY_EXT)
 
 # ============================================================================
 # Clean targets

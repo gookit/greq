@@ -85,7 +85,7 @@ With request match:
 	cmd.BoolVar(&cmdOpts.insecure, "insecure", false, "Allow insecure SSL connections;;k")
 	cmd.BoolVar(&cmdOpts.json, "json", false, "Quick set Content-Type: application/json")
 	cmd.BoolVar(&cmdOpts.headOnly, "head", false, "Show response headers only;;I")
-	cmd.BoolVar(&showVersion, "version", false, "Show version information.;;V")
+	cmd.BoolVar(&showVersion, "version", false, "Show version information.")
 
 	cmd.AddArg("url", "the URL to request", false, nil)
 

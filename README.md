@@ -37,6 +37,14 @@ go get github.com/gookit/greq
 
 ### CLI tools
 
+Install by [Eget](https://github.com/inherelab/eget):
+
+```bash
+eget install --asset "greq,gbench" gookit/greq
+```
+
+Install by Go:
+
 ```bash
 # HTTP request tool
 go install github.com/gookit/greq/cmd/greq@latest
