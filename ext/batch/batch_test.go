@@ -249,7 +249,10 @@ func TestGetAnyWithOptions(t *testing.T) {
 }
 
 func TestExecuteAllWithError(t *testing.T) {
-	// 准备测试数据，包含一个无效URL
+	// 准备测试数据，包含一个会失败的请求。
+	// 使用 loopback + 未监听端口 (127.0.0.1:1) 而不是无效域名:
+	// 部分网络 (Kubernetes/企业/ISP 的 DNS 劫持) 会把不存在的域名解析到实际 IP,
+	// 导致请求"成功",测试失败。loopback 不走 DNS,端口 1 必返回 connection refused。
 	requests := []*batch.Request{
 		{
 			ID:     "valid",
@@ -259,7 +262,7 @@ func TestExecuteAllWithError(t *testing.T) {
 		{
 			ID:     "invalid",
 			Method: "GET",
-			URL:    "http://invalid.invalid", // 无效的域名
+			URL:    "http://127.0.0.1:1/get",
 		},
 	}
 
