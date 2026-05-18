@@ -116,19 +116,22 @@ func (bp *Processor) executeRequest(req *Request) *Result {
 	return result
 }
 
-// worker processes requests from the jobs channel
-func (bp *Processor) worker(wg *sync.WaitGroup, jobs <-chan *Request) {
+// worker processes requests from the jobs channel.
+// Honors ctx (typically the per-call timeout ctx from ExecuteAll/ExecuteAny)
+// so that batch-level timeouts actually stop in-flight workers instead of
+// letting them drain the rest of the queue after the caller has given up.
+func (bp *Processor) worker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan *Request) {
 	defer wg.Done()
 
 	for req := range jobs {
 		select {
-		case <-bp.ctx.Done():
+		case <-ctx.Done():
 			return
 		default:
 			result := bp.executeRequest(req)
 			select {
 			case bp.results <- result:
-			case <-bp.ctx.Done():
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -161,7 +164,7 @@ func (bp *Processor) ExecuteAll() Results {
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go bp.worker(&wg, jobs)
+		go bp.worker(ctx, &wg, jobs)
 	}
 
 	// Send all requests to jobs channel
@@ -187,14 +190,22 @@ func (bp *Processor) ExecuteAll() Results {
 			results[result.ID] = result
 			completed++
 		case <-ctx.Done():
-			// Context cancelled, return what we have so far
-			return results
+			// Context cancelled (timeout or external). Still drain whatever
+			// has been buffered and wait for workers to exit so we don't leak
+			// goroutines after returning.
+			wg.Wait()
+			for {
+				select {
+				case r := <-bp.results:
+					results[r.ID] = r
+				default:
+					return results
+				}
+			}
 		}
 	}
 
-	// Wait for all workers to finish
 	wg.Wait()
-
 	return results
 }
 
@@ -224,7 +235,7 @@ func (bp *Processor) ExecuteAny() *Result {
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go bp.worker(&wg, jobs)
+		go bp.worker(ctx, &wg, jobs)
 	}
 
 	go func() {
@@ -271,10 +282,13 @@ func (bp *Processor) ExecuteAny() *Result {
 	}
 }
 
-// Close cleans up resources
+// Close cancels any in-flight batch.
+//
+// Does NOT close bp.results — workers may still be writing to it (panic:
+// "send on closed channel"), and the channel is GC'd once nothing references
+// it. Safe to call multiple times: context.CancelFunc is idempotent.
 func (bp *Processor) Close() {
 	bp.cancel()
-	close(bp.results)
 }
 
 // MaxConcurrency returns the maximum number of concurrent requests
