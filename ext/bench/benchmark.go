@@ -337,10 +337,11 @@ func (b *HTTPBench) doRequest() {
 	b.respTimes = append(b.respTimes, duration)
 	b.mu.Unlock()
 
-	// 统计字节数
+	// 统计字节数 — 用 BodyBufferE 避免读 body 出错时 panic 把整个 bench 拉崩
 	if resp.Body != nil {
-		bodyBytes := resp.BodyBuffer().Bytes()
-		atomic.AddInt64(&b.totalBytes, int64(len(bodyBytes)))
+		if buf, berr := resp.BodyBufferE(); berr == nil {
+			atomic.AddInt64(&b.totalBytes, int64(buf.Len()))
+		}
 	}
 
 	if resp.IsOK() {

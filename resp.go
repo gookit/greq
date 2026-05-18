@@ -77,23 +77,33 @@ func (r *Response) SetDecoder(decoder RespDecoder) {
 	r.decoder = decoder
 }
 
-// BodyBuffer read body to buffer.
+// BodyBuffer reads body to buffer. Panics on read error — kept for backward
+// compatibility. Prefer BodyBufferE for new code so a transient network
+// error during read doesn't crash the program.
 //
-// NOTICE: must close resp body.
+// NOTICE: closes resp body.
 func (r *Response) BodyBuffer() *bytes.Buffer {
-	buf := &bytes.Buffer{}
-	// prof: Allocate memory in advance
-	if r.ContentLength > bytes.MinRead {
-		buf.Grow(int(r.ContentLength) + 2)
-	}
-
-	// NOTICE: must close resp body.
-	defer r.QuietCloseBody()
-	_, err := buf.ReadFrom(r.Body)
+	buf, err := r.BodyBufferE()
 	if err != nil {
 		panic(err)
 	}
 	return buf
+}
+
+// BodyBufferE reads body to buffer and returns any read error.
+//
+// NOTICE: closes resp body.
+func (r *Response) BodyBufferE() (*bytes.Buffer, error) {
+	buf := &bytes.Buffer{}
+	if r.ContentLength > bytes.MinRead {
+		buf.Grow(int(r.ContentLength) + 2)
+	}
+
+	defer r.QuietCloseBody()
+	if _, err := buf.ReadFrom(r.Body); err != nil {
+		return buf, err
+	}
+	return buf, nil
 }
 
 // HeaderString convert response headers to string
@@ -109,9 +119,16 @@ func (r *Response) HeaderString() string {
 	return buf.String()
 }
 
-// BodyString convert response body to string
+// BodyString reads response body as string. Panics on read error;
+// prefer BodyStringE for new code.
 func (r *Response) BodyString() string {
 	return r.BodyBuffer().String()
+}
+
+// BodyStringE reads response body as string and returns any read error.
+func (r *Response) BodyStringE() (string, error) {
+	buf, err := r.BodyBufferE()
+	return buf.String(), err
 }
 
 // SaveFile file on the response body is not-nil.
