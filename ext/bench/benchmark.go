@@ -401,21 +401,40 @@ func (b *HTTPBench) generateResult() *BenchResult {
 	return result
 }
 
-// String 格式化输出结果
-func (r *BenchResult) String() string {
-	// 设置 buf 初始容量
+// String returns the formatted result with ccolor tags (<green>...</> etc.).
+// Suitable for printing via ccolor.Print on a terminal. For file output use
+// PlainString to avoid raw tags ending up in the file.
+func (r *BenchResult) String() string { return r.format(true) }
+
+// PlainString returns the formatted result without color tags. Use this when
+// writing the result to a file or any non-ccolor sink.
+func (r *BenchResult) PlainString() string { return r.format(false) }
+
+func (r *BenchResult) format(colored bool) string {
+	// 一对小函数避免在每行都写 if colored 分支
+	g := func(s string) string {
+		if colored {
+			return "<green>" + s + "</>"
+		}
+		return s
+	}
+	red := func(s string) string {
+		if colored {
+			return "<red>" + s + "</>"
+		}
+		return s
+	}
+
 	buf := make([]byte, 0, 256)
 
-	// 计算成功请求比例 (avoid NaN when interrupted before any request)
 	var successRatio float64
 	if r.TotalReqs > 0 {
 		successRatio = float64(r.SuccessReqs) / float64(r.TotalReqs)
 	}
 
-	// buf = append(buf, fmt.Sprintf("Benchmarking %s\n", r.URL)...)
 	buf = append(buf, fmt.Sprintf("Total      requests: %d\n", r.TotalReqs)...)
-	buf = append(buf, fmt.Sprintf("Successful requests: <green>%d</>(%.2f%%)\n", r.SuccessReqs, successRatio*100)...)
-	buf = append(buf, fmt.Sprintf("Failed     requests: <red>%d</>\n", r.FailReqs)...)
+	buf = append(buf, fmt.Sprintf("Successful requests: %s(%.2f%%)\n", g(fmt.Sprintf("%d", r.SuccessReqs)), successRatio*100)...)
+	buf = append(buf, fmt.Sprintf("Failed     requests: %s\n", red(fmt.Sprintf("%d", r.FailReqs)))...)
 	buf = append(buf, fmt.Sprintf("Duration       time: %s\n", r.Duration)...)
 	buf = append(buf, fmt.Sprintf("Requests per second: %.2f\n", r.ReqsPerSecond)...)
 	buf = append(buf, fmt.Sprintf("Bytes   per  second: %.2f\n", r.BytesPerSecond)...)
@@ -429,7 +448,7 @@ func (r *BenchResult) String() string {
 	if len(r.StatusCodes) > 0 {
 		buf = append(buf, "\nStatus code distribution:\n"...)
 		for code, count := range r.StatusCodes {
-			buf = append(buf, fmt.Sprintf("  <green>%d</>: %d\n", code, count)...)
+			buf = append(buf, fmt.Sprintf("  %s: %d\n", g(fmt.Sprintf("%d", code)), count)...)
 		}
 	}
 

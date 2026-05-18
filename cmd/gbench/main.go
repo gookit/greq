@@ -194,15 +194,13 @@ func runBenchmark(c *cflag.CFlags) error {
 	}
 	_ = interrupted // reserved for future use (e.g. non-zero exit on interrupt)
 
-	// 输出结果
-	output := result.String()
-
+	// 输出结果 — 终端用带色版本，文件用纯文本版本（避免 <green>...</> 写进文件）
 	if benchOpts.output == "stdout" {
 		ccolor.Successf("\nBenchmark Results:\n")
-		ccolor.Print(output)
+		ccolor.Print(result.String())
 	} else {
 		ccolor.Successf("Benchmark completed successfully!\n")
-		err = os.WriteFile(benchOpts.output, []byte(output), 0644)
+		err = os.WriteFile(benchOpts.output, []byte(result.PlainString()), 0644)
 		if err != nil {
 			return fmt.Errorf("failed to write output file: %v", err)
 		}
