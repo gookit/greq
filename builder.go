@@ -496,7 +496,11 @@ type Options struct {
 	//
 	// type allow: string, []byte, io.Reader, io.ReadCloser, url.Values, map[string]string
 	Body any
-	// Provider body data provider, can with custom content-type
+	// Provider body data provider, can with custom content-type.
+	//
+	// Do NOT assign a typed nil pointer here (e.g. var p *MyProvider; opt.Provider = p):
+	// the interface compares non-nil, the request build path calls p.Body(), and you get
+	// a panic. Leave the field as its zero value if you have no provider.
 	Provider BodyProvider
 
 	// EncodeJSON req body

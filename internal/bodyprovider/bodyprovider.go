@@ -78,6 +78,11 @@ func (p Form) Body() (io.Reader, error) {
 
 // Multipart builds a multipart/form-data body from files and fields.
 // Uses a pointer receiver because Body() lazily materializes the buffer.
+//
+// IMPORTANT: ContentType() returns "" until Body() has been called at least
+// once (because the multipart boundary is generated during build()). Callers
+// that need both the body and the Content-Type header MUST call Body() first.
+// The greq client does this already in NewRequestWithOptions.
 type Multipart struct {
 	files       map[string]string
 	fields      map[string]string
