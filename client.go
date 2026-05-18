@@ -544,58 +544,51 @@ func (h *Client) SendWithOption(method, url string, optFns ...OptionFn) (*Respon
 
 // SendWithOpt send request with option, then return response
 func (h *Client) SendWithOpt(pathURL string, opt *Options) (*Response, error) {
-	// build request
 	req, err := h.NewRequestWithOptions(pathURL, opt)
 	if err != nil {
 		return nil, err
 	}
-
-	// do send with request-level retry config if set
-	if opt.MaxRetries > 0 || opt.RetryDelay > 0 || opt.RetryChecker != nil {
-		return h.sendRequestWithRetryConfig(req, opt)
-	}
-
-	// do send with client-level retry config
-	return h.SendRequest(req)
+	return h.sendRequestWithRetry(req, 0, h.effectiveRetryCfg(opt))
 }
 
-// sendRequestWithRetryConfig send request with request-level retry configuration
-func (h *Client) sendRequestWithRetryConfig(req *http.Request, opt *Options) (*Response, error) {
-	// save original client retry config
-	originalMaxRetries := h.MaxRetries
-	originalRetryDelay := h.RetryDelay
-	originalRetryChecker := h.RetryChecker
-
-	// apply request-level retry config
-	if opt.MaxRetries > 0 {
-		h.MaxRetries = opt.MaxRetries
-	}
-	if opt.RetryDelay > 0 {
-		h.RetryDelay = opt.RetryDelay
-	}
-	if opt.RetryChecker != nil {
-		h.RetryChecker = opt.RetryChecker
-	}
-
-	// send request with retry
-	resp, err := h.SendRequest(req)
-
-	// restore original client retry config
-	h.MaxRetries = originalMaxRetries
-	h.RetryDelay = originalRetryDelay
-	h.RetryChecker = originalRetryChecker
-
-	return resp, err
-}
-
-// SendRequest send request
+// SendRequest sends a pre-built request using the Client-level retry config.
 func (h *Client) SendRequest(req *http.Request) (*Response, error) {
-	return h.sendRequestWithRetry(req, 0)
+	return h.sendRequestWithRetry(req, 0, h.effectiveRetryCfg(nil))
+}
+
+// retryCfg is the resolved retry policy for one request lifecycle (initial + retries).
+// Threading it through the call chain instead of mutating Client fields makes the
+// hot path safe for concurrent SendWithOpt callers.
+type retryCfg struct {
+	maxRetries int
+	retryDelay int
+	checker    RetryChecker
+}
+
+// effectiveRetryCfg resolves the per-request retry config, falling back to Client defaults.
+func (h *Client) effectiveRetryCfg(opt *Options) retryCfg {
+	cfg := retryCfg{
+		maxRetries: h.MaxRetries,
+		retryDelay: h.RetryDelay,
+		checker:    h.RetryChecker,
+	}
+	if opt != nil {
+		if opt.MaxRetries > 0 {
+			cfg.maxRetries = opt.MaxRetries
+		}
+		if opt.RetryDelay > 0 {
+			cfg.retryDelay = opt.RetryDelay
+		}
+		if opt.RetryChecker != nil {
+			cfg.checker = opt.RetryChecker
+		}
+	}
+	return cfg
 }
 
 // sendRequestWithRetry send request with retry logic.
 // h.handler is built in New/Sub/Middlewares; this hot path only reads it.
-func (h *Client) sendRequestWithRetry(req *http.Request, attempt int) (*Response, error) {
+func (h *Client) sendRequestWithRetry(req *http.Request, attempt int, cfg retryCfg) (*Response, error) {
 	start := time.Now()
 
 	// call before send.
@@ -608,48 +601,33 @@ func (h *Client) sendRequestWithRetry(req *http.Request, attempt int) (*Response
 	// do send by core handler
 	resp, err := h.handler(req)
 	if resp != nil {
-		// set cost time
 		resp.CostTime = time.Since(start).Milliseconds()
 	}
 
-	// call after send.
 	if h.AfterSend != nil {
 		h.AfterSend(resp, err)
 	}
 
-	// check if retry is needed
-	if h.shouldRetry(resp, err, attempt) {
-		return h.retryRequest(req, attempt)
+	if shouldRetry(resp, err, attempt, cfg) {
+		if cfg.retryDelay > 0 {
+			time.Sleep(time.Duration(cfg.retryDelay) * time.Millisecond)
+		}
+		return h.sendRequestWithRetry(req, attempt+1, cfg)
 	}
 
 	return resp, err
 }
 
-// shouldRetry check if request should be retried
-func (h *Client) shouldRetry(resp *Response, err error, attempt int) bool {
-	// check max retries
-	if h.MaxRetries <= 0 || attempt >= h.MaxRetries {
+// shouldRetry checks the resolved retry config against the current attempt/result.
+func shouldRetry(resp *Response, err error, attempt int, cfg retryCfg) bool {
+	if cfg.maxRetries <= 0 || attempt >= cfg.maxRetries {
 		return false
 	}
-
-	// use custom retry checker if set, otherwise use default
-	checker := h.RetryChecker
+	checker := cfg.checker
 	if checker == nil {
 		checker = DefaultRetryChecker
 	}
-
 	return checker(resp, err, attempt)
-}
-
-// retryRequest perform retry with delay
-func (h *Client) retryRequest(req *http.Request, attempt int) (*Response, error) {
-	// apply retry delay if set
-	if h.RetryDelay > 0 {
-		time.Sleep(time.Duration(h.RetryDelay) * time.Millisecond)
-	}
-
-	// increment attempt count and retry
-	return h.sendRequestWithRetry(req, attempt+1)
 }
 
 //
