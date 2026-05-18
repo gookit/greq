@@ -2,6 +2,7 @@ package greq
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -40,9 +41,12 @@ func (r *Response) IsFail() bool {
 	return !httpreq.IsOK(r.StatusCode)
 }
 
-// IsEmptyBody check response body is empty
+// IsEmptyBody reports whether the response body is known to be empty.
+// Returns true only when Content-Length is explicitly 0; chunked responses
+// (Content-Length == -1) are NOT treated as empty because their actual size
+// isn't known until the stream is consumed.
 func (r *Response) IsEmptyBody() bool {
-	return r.ContentLength <= 0
+	return r.ContentLength == 0
 }
 
 // ContentType get response content type
@@ -131,8 +135,22 @@ func (r *Response) BodyStringE() (string, error) {
 	return buf.String(), err
 }
 
-// SaveFile file on the response body is not-nil.
+// SaveFile writes the response body to file. Returns an error (without
+// writing anything) if the response status is not 2xx — otherwise a 404
+// HTML page or 500 stack trace would silently get saved as the "file".
+//
+// Call SaveBody if you really want to save regardless of status.
 func (r *Response) SaveFile(file string) (n int, err error) {
+	if r.IsFail() {
+		r.QuietCloseBody()
+		return 0, fmt.Errorf("greq: refuse to save body on non-2xx response (status %d)", r.StatusCode)
+	}
+	return r.SaveBody(file)
+}
+
+// SaveBody writes the response body to file unconditionally, regardless of
+// status code. Use this when you intend to capture error pages too.
+func (r *Response) SaveBody(file string) (n int, err error) {
 	if r.Body != nil {
 		defer r.QuietCloseBody()
 		n, err = fsutil.PutContents(file, r.Body)
