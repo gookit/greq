@@ -66,6 +66,25 @@ jobs:
         shallow: true
         parallel: true
 
+  # Race detector runs in a separate job on Linux (cgo is on by default there).
+  # Kept off the coverage matrix because -race adds ~5-10x runtime overhead;
+  # one Go version is enough since the detector semantics are version-stable.
+  race:
+    name: Race detector (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Setup Go Faster
+        uses: WillAbides/setup-go-faster@v1.15.0
+        timeout-minutes: 3
+        with:
+          go-version: stable
+
+      - name: Run tests with -race
+        run: go test -race -timeout 5m ./...
+
   # notifies that all test jobs are finished.
   # https://github.com/shogo82148/actions-goveralls
   finish:
