@@ -42,6 +42,8 @@ jobs:
         run: |
           make release
           ls -alh ./release
+          ./cmd/greq-linux-amd64 --version
+          ./cmd/gbench-linux-amd64 --version
 
       - name: Generate changelog
         run: |

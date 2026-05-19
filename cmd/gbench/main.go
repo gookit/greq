@@ -72,7 +72,7 @@ If not specified, results are written to stdout.;;o`)
 	cmd.StringVar(&benchOpts.method, "method", "GET", "HTTP method;;m")
 	cmd.BoolVar(&benchOpts.json, "json", false, "Quick add Content-Type: application/json header.")
 	cmd.BoolVar(&benchOpts.progress, "progress", true, "Show progress bar.")
-	cmd.BoolVar(&showVersion, "version", false, "Show version information.;;V")
+	cmd.BoolVar(&showVersion, "version", false, "Show version information.")
 
 	cmd.AddArg("url", "the URL to benchmark test", true, nil)
 

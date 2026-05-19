@@ -85,15 +85,7 @@ build-gbench: ## Build gbench binary only
 
 # Linux builds
 .PHONY: build-linux
-build-linux: ## Build binaries for Linux (amd64, arm64)
-	@echo "Building for Linux..."
-	@mkdir -p $(BUILD_DIR)
-	@for arch in amd64 arm64; do \
-		echo "  Building for linux/$$arch..."; \
-		for bin in $(BINS); do \
-			(cd cmd/$$bin && GOOS=linux GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-$$arch .) || exit 1; \
-		done; \
-	done
+build-linux: build-linux-amd64 build-linux-arm64 ## Build binaries for Linux (amd64, arm64)
 	@echo "Linux build complete."
 
 .PHONY: build-linux-amd64
@@ -102,6 +94,7 @@ build-linux-amd64: ## Build binaries for Linux amd64
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/amd64..."; \
 		(cd cmd/$$bin && GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-amd64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin-linux-amd64; \
 	done
 
 .PHONY: build-linux-arm64
@@ -110,19 +103,12 @@ build-linux-arm64: ## Build binaries for Linux arm64
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/arm64..."; \
 		(cd cmd/$$bin && GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-arm64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin-linux-arm64; \
 	done
 
 # macOS builds
 .PHONY: build-darwin
-build-darwin: ## Build binaries for macOS (amd64, arm64)
-	@echo "Building for macOS..."
-	@mkdir -p $(BUILD_DIR)
-	@for arch in amd64 arm64; do \
-		echo "  Building for darwin/$$arch..."; \
-		for bin in $(BINS); do \
-			(cd cmd/$$bin && GOOS=darwin GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-$$arch .) || exit 1; \
-		done; \
-	done
+build-darwin: build-darwin-amd64 build-darwin-arm64 ## Build binaries for macOS (amd64, arm64)
 	@echo "macOS build complete."
 
 .PHONY: build-darwin-amd64
@@ -131,6 +117,7 @@ build-darwin-amd64: ## Build binaries for macOS amd64 (Intel)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/amd64..."; \
 		(cd cmd/$$bin && GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-amd64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin-darwin-amd64; \
 	done
 
 .PHONY: build-darwin-arm64
@@ -139,19 +126,12 @@ build-darwin-arm64: ## Build binaries for macOS arm64 (Apple Silicon)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/arm64..."; \
 		(cd cmd/$$bin && GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-arm64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin-darwin-arm64; \
 	done
 
 # Windows builds
 .PHONY: build-windows
-build-windows: ## Build binaries for Windows (amd64, arm64)
-	@echo "Building for Windows..."
-	@mkdir -p $(BUILD_DIR)
-	@for arch in amd64 arm64; do \
-		echo "  Building for windows/$$arch..."; \
-		for bin in $(BINS); do \
-			(cd cmd/$$bin && GOOS=windows GOARCH=$$arch $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-$$arch.exe .) || exit 1; \
-		done; \
-	done
+build-windows: build-windows-amd64 build-windows-arm64 ## Build binaries for Windows (amd64, arm64)
 	@echo "Windows build complete."
 
 .PHONY: build-windows-amd64
@@ -173,8 +153,8 @@ build-windows-arm64: ## Build binaries for Windows arm64
 # Build all platforms
 .PHONY: build-all
 build-all: build-linux build-darwin build-windows ## Build binaries for all platforms
-	@echo "All platform builds complete."
-	@ls -la $(BUILD_DIR)/
+	@echo "🎉 All platform builds complete."
+	@ls -lah $(BUILD_DIR)/
 
 # ============================================================================
 # Development targets
