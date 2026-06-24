@@ -27,7 +27,7 @@ var (
 
 var showVersion bool
 var benchOpts = struct {
-	number      int
+	number      int64
 	concurrency int
 	// Duration of application to send requests. If duration is specified, n is ignored.
 	duration string
@@ -54,7 +54,7 @@ func main() {
 	})
 
 	// add options
-	cmd.IntVar(&benchOpts.number, "number", 100, "number of requests to run;;n")
+	cmd.Int64Var(&benchOpts.number, "number", 100, "number of requests to run;;n")
 	cmd.IntVar(&benchOpts.concurrency, "concurrency", 3, "number of multiple requests to make at a time;;c")
 	cmd.StringVar(&benchOpts.duration, "duration", "", `duration of application to send requests. If duration is specified, <green>n</> is ignored.
 Example:
@@ -169,7 +169,7 @@ func runBenchmark(c *cflag.CFlags) error {
 		fmt.Println()
 		maxStep := benchOpts.number
 		if duration > 0 {
-			maxStep = int(duration.Seconds())
+			maxStep = int64(duration.Seconds())
 			if maxStep <= 0 {
 				maxStep = 1
 			}
@@ -178,14 +178,14 @@ func runBenchmark(c *cflag.CFlags) error {
 		bar.Start()
 
 		hb.OnProgress(func(s bench.Snapshot) {
-			var step uint
+			var step int64
 			if s.Duration > 0 {
-				step = uint(s.Elapsed.Seconds())
+				step = int64(s.Elapsed.Seconds())
 			} else {
-				step = uint(s.Completed)
+				step = int64(s.Completed)
 			}
-			if int(step) > maxStep {
-				step = uint(maxStep)
+			if step > maxStep {
+				step = maxStep
 			}
 			bar.AdvanceTo(step)
 			if s.Done {

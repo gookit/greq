@@ -39,7 +39,7 @@ type HTTPBench struct {
 	QPSLimit int           // QPS限制 (0表示不限制)
 
 	// 测试参数
-	Number      int           // 总请求数
+	Number      int64         // 总请求数
 	Concurrency int           // 并发数
 	Duration    time.Duration // 测试时长 (如果指定，则忽略Number)
 
@@ -58,8 +58,8 @@ type HTTPBench struct {
 
 	// Progress 回调 — nil 时不启动进度协程。CLI 渲染通过这个钩子接入，
 	// 让库本身不依赖任何 UI 包。
-	onProgress     ProgressFn
-	progressTick   time.Duration // 触发间隔, 0 时默认 200ms
+	onProgress   ProgressFn
+	progressTick time.Duration // 触发间隔, 0 时默认 200ms
 
 	// 客户端
 	client *greq.Client
@@ -138,7 +138,7 @@ func (b *HTTPBench) SetConcurrency(concurrency int) *HTTPBench {
 }
 
 // SetNumber 设置请求数
-func (b *HTTPBench) SetNumber(number int) *HTTPBench {
+func (b *HTTPBench) SetNumber(number int64) *HTTPBench {
 	b.Number = number
 	return b
 }
@@ -258,8 +258,8 @@ func (b *HTTPBench) RunCtx(parent context.Context) (*BenchResult, error) {
 
 	// Deliver one final snapshot (may be partial if context was cancelled).
 	if b.onProgress != nil {
-		b.cancel()      // stop the progress goroutine
-		<-progressDone  // wait for it to actually exit
+		b.cancel()     // stop the progress goroutine
+		<-progressDone // wait for it to actually exit
 		b.onProgress(b.snapshot(true))
 	}
 
@@ -270,7 +270,7 @@ func (b *HTTPBench) RunCtx(parent context.Context) (*BenchResult, error) {
 func (b *HTTPBench) dispatcher(workCh chan<- struct{}) {
 	defer close(workCh)
 
-	reqCount := 0
+	var reqCount int64
 	for {
 		select {
 		case <-b.ctx.Done():
