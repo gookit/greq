@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,7 @@ var cmdOpts = struct {
 	data     string
 	headers  cflag.KVString
 	formData cflag.KVString
+	jsonData cflag.KVString
 	timeout  int
 	output   string
 	raw      string
@@ -42,12 +44,13 @@ var cmdOpts = struct {
 	silent   bool
 	follow   bool
 	insecure bool
-	json     bool   // quick set Content-Type: application/json
+	jsonType bool   // quick set Content-Type: application/json
 	agent    string // custom user-agent
 	headOnly bool   // show response headers only
 }{
 	headers:  cflag.KVString{Sep: ":"},
 	formData: cflag.KVString{Sep: "="},
+	jsonData: cflag.KVString{Sep: "="},
 	httpVars: cflag.KVString{Sep: "="},
 }
 
@@ -69,6 +72,7 @@ func main() {
 	cmd.StringVar(&cmdOpts.agent, "agent", "", "Custom set User-Agent;;A")
 	cmd.Var(&cmdOpts.headers, "header", `Custom HTTP header, allow multi. eg: "Foo: bar";;H`)
 	cmd.Var(&cmdOpts.formData, "form", `Custom HTTP form data, allow multi. eg: "key=value";;F`)
+	cmd.Var(&cmdOpts.jsonData, "json", `Custom HTTP JSON field, allow multi. eg: "key=value";;J`)
 	cmd.IntVar(&cmdOpts.timeout, "timeout", 30, "Request timeout in seconds;;t")
 	cmd.StringVar(&cmdOpts.output, "output", "", "Output file for response;;o")
 	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file.
@@ -84,7 +88,7 @@ Request matching:
 	cmd.BoolVar(&cmdOpts.silent, "silent", false, "Silent mode;;s")
 	cmd.BoolVar(&cmdOpts.follow, "follow", false, "Follow redirects;;L")
 	cmd.BoolVar(&cmdOpts.insecure, "insecure", false, "Allow insecure SSL connections;;k")
-	cmd.BoolVar(&cmdOpts.json, "json", false, "Quick set Content-Type: application/json")
+	cmd.BoolVar(&cmdOpts.jsonType, "json-type", false, "Quick set Content-Type: application/json")
 	cmd.BoolVar(&cmdOpts.headOnly, "head", false, "Show response headers only;;I")
 	cmd.BoolVar(&showVersion, "version", false, "Show version information.")
 
@@ -98,7 +102,7 @@ Request matching:
   greq -H "Authorization: Bearer token" -H "Content-Type: application/json" https://example.com
 
   # POST request with JSON data
-  greq -X POST --json -d '{"key":"value"}' https://example.com
+  greq --json key=value https://example.com
 
   # Download file
   greq -O https://example.com/file.zip
@@ -323,7 +327,7 @@ func handleNormalRequest(url string) error {
 	}
 
 	// 快速设置 Content-Type: application/json
-	if cmdOpts.json {
+	if cmdOpts.jsonType {
 		optFns = append(optFns, greq.WithContentType(httpctype.JSON))
 		if httpreq.IsNoBodyMethod(reqMethod) {
 			reqMethod = "POST"
@@ -334,6 +338,13 @@ func handleNormalRequest(url string) error {
 	var bodyData []byte
 	if cmdOpts.data != "" {
 		bodyData = []byte(cmdOpts.data)
+	} else if !cmdOpts.jsonData.IsEmpty() {
+		optFns = append(optFns, greq.WithContentType(httpctype.JSON))
+		var err error
+		bodyData, err = buildJSONBody(cmdOpts.jsonData.Data())
+		if err != nil {
+			return err
+		}
 	} else if !cmdOpts.formData.IsEmpty() {
 		optFns = append(optFns, greq.WithContentType(httpctype.Form))
 		uvs := httpreq.MakeQuery(cmdOpts.formData.Data())
@@ -378,6 +389,17 @@ func handleNormalRequest(url string) error {
 
 	// 输出响应
 	return outputResponse(resp)
+}
+
+func buildJSONBody(fields map[string]string) ([]byte, error) {
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	bodyData, err := json.Marshal(fields)
+	if err != nil {
+		return nil, fmt.Errorf("build json body failed: %w", err)
+	}
+	return bodyData, nil
 }
 
 // outputResponse 输出响应结果

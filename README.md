@@ -369,7 +369,8 @@ sub.GetDo("/items")   // inherits retries, user-agent; adds trace header
 go install github.com/gookit/greq/cmd/greq@latest
 
 greq https://httpbin.org/get
-greq -X POST -d '{"name":"inhere"}' https://httpbin.org/post
+greq -J name=inhere -J age=18 https://httpbin.org/post
+greq --json-type -d '{"name":"inhere"}' https://httpbin.org/post
 greq -r req.http                          # send an .http file
 greq -r req.http -V token=$API_TOKEN      # with variables
 greq -O https://example.com/file.zip      # treat URL as download

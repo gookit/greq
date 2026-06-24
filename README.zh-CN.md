@@ -351,7 +351,8 @@ sub.GetDo("/items")   // 继承重试、UA；额外加 X-Trace
 go install github.com/gookit/greq/cmd/greq@latest
 
 greq https://httpbin.org/get
-greq -X POST -d '{"name":"inhere"}' https://httpbin.org/post
+greq -J name=inhere -J age=18 https://httpbin.org/post
+greq --json-type -d '{"name":"inhere"}' https://httpbin.org/post
 greq -r req.http                          # 发送 .http 文件
 greq -r req.http -V token=$API_TOKEN      # 带变量
 greq -O https://example.com/file.zip      # 当作下载链接

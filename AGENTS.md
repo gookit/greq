@@ -174,7 +174,7 @@ func (r *Response) IsOK() bool {
 
 - 测试文件命名: `*_test.go`
 - 测试函数命名: `Test<FunctionName>` 或 `Test<Struct>_<Method>`
-- 使用 `github.com/gookit/goutil/testutil/assert` 断言库
+- 使用 `github.com/gookit/goutil/x/assert` 断言库
 - 使用 `TestMain` 设置测试环境和 mock 服务器
 
 ```go
