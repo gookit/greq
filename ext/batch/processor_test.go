@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/gookit/goutil/testutil"
-	"github.com/gookit/goutil/testutil/assert"
+	"github.com/gookit/goutil/x/assert"
 	"github.com/gookit/greq"
 	"github.com/gookit/greq/ext/batch"
 )
@@ -15,8 +15,8 @@ func TestAddPutAndAddDelete(t *testing.T) {
 		batch.WithClient(greq.New()),
 		batch.WithContext(context.Background()),
 	)
-	bp.AddPut("put_data", testApiURL + "/put", map[string]string{"test": "data", "type": "put"})
-	bp.AddDelete("delete_req", testApiURL + "/delete")
+	bp.AddPut("put_data", testApiURL+"/put", map[string]string{"test": "data", "type": "put"})
+	bp.AddDelete("delete_req", testApiURL+"/delete")
 
 	results := bp.ExecuteAll()
 	assert.Len(t, results, 2)

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gookit/goutil/testutil"
-	"github.com/gookit/goutil/testutil/assert"
+	"github.com/gookit/goutil/x/assert"
 	"github.com/gookit/greq"
 	"github.com/gookit/greq/ext/batch"
 )

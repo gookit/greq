@@ -3,7 +3,7 @@ package httpfile_test
 import (
 	"testing"
 
-	"github.com/gookit/goutil/testutil/assert"
+	"github.com/gookit/goutil/x/assert"
 	"github.com/gookit/greq/ext/httpfile"
 )
 
@@ -27,7 +27,7 @@ Request body`,
 					Headers: map[string]string{
 						"X-Custom-Header": "custom-value",
 					},
-					Body: "Request body",
+					Body:     "Request body",
 					Comments: []string{},
 				},
 			},
@@ -48,23 +48,23 @@ Content-Type: application/json
 {"key": "value"}`,
 			want: []*httpfile.HTTPRequest{
 				{
-					Name: "First Request",
+					Name:   "First Request",
 					Method: "GET",
 					URL:    "https://example.com/api1",
 					Headers: map[string]string{
 						"X-Header1": "value1",
 					},
-					Body: "Body1",
+					Body:     "Body1",
 					Comments: []string{},
 				},
 				{
-					Name: "Second Request",
+					Name:   "Second Request",
 					Method: "POST",
 					URL:    "https://example.com/api2",
 					Headers: map[string]string{
 						"Content-Type": "application/json",
 					},
-					Body: `{"key": "value"}`,
+					Body:     `{"key": "value"}`,
 					Comments: []string{},
 				},
 			},
@@ -82,20 +82,20 @@ X-Header: value
 Request body`,
 			want: []*httpfile.HTTPRequest{
 				{
-					Name: "Request with Comments",
+					Name:   "Request with Comments",
 					Method: "GET",
 					URL:    "https://example.com/api",
 					Headers: map[string]string{
 						"X-Header": "value",
 					},
-					Body: "Request body",
+					Body:     "Request body",
 					Comments: []string{"# This is a comment", "# Header comment", "# Body comment"},
 				},
 			},
 			wantErr: false,
 		},
 		{
-			name: "empty content",
+			name:    "empty content",
 			content: "",
 			want:    []*httpfile.HTTPRequest{},
 			wantErr: false,
@@ -133,7 +133,7 @@ func TestHTTPFile_Parse(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "parse with contents",
+			name: "parse with contents",
 			contents: `GET https://example.com/api
 X-Header: value
 
@@ -145,7 +145,7 @@ Body`,
 					Headers: map[string]string{
 						"X-Header": "value",
 					},
-					Body: "Body",
+					Body:     "Body",
 					Comments: []string{},
 				},
 			},

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gookit/goutil/x/assert"
 	"github.com/gookit/greq"
 	"github.com/gookit/greq/ext/batch"
-	"github.com/gookit/goutil/testutil/assert"
 )
 
 func TestWithMaxConcurrency(t *testing.T) {

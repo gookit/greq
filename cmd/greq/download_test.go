@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gookit/goutil/testutil/assert"
+	"github.com/gookit/goutil/x/assert"
 )
 
 func TestFormatBytes(t *testing.T) {
@@ -47,7 +47,7 @@ func TestShowDownloadProgress(t *testing.T) {
 	// 测试有文件大小的情况
 	startTime := time.Now().Add(-30 * time.Second)
 	showDownloadProgress(52428800, 104857600, startTime)
-	
+
 	// 测试未知文件大小的情况
 	startTime2 := time.Now().Add(-10 * time.Second)
 	showDownloadProgress(10485760, 0, startTime2)

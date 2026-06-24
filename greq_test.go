@@ -14,7 +14,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpreq"
 	"github.com/gookit/goutil/testutil"
-	"github.com/gookit/goutil/testutil/assert"
+	"github.com/gookit/goutil/x/assert"
 	"github.com/gookit/greq"
 )
 
@@ -61,7 +61,6 @@ func TestMust(t *testing.T) {
 		greq.Must(greq.GetDo(testBaseURL + "/get"))
 	})
 }
-
 
 // DefaultRetryChecker 测试默认重试检查器
 func TestDefaultRetryChecker(t *testing.T) {

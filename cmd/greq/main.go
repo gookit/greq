@@ -62,7 +62,7 @@ var cmdOpts = struct {
 //		go install github.com/gookit/greq/cmd/greq@latest
 func main() {
 	cmd := cflag.New(func(c *cflag.CFlags) {
-		c.Desc = fmt.Sprintf("Lightweight HTTP request tool, like curl.\n Commit: %s, Build: %s", GitCommit, BuildTime)
+		c.Desc = fmt.Sprintf("Lightweight HTTP request tool by Go, like curl.\n Commit: %s, Build: %s", GitCommit, BuildTime)
 		c.Version = Version
 	})
 
