@@ -333,17 +333,7 @@ func handleNormalRequest(url string) error {
 	}
 
 	if !cmdOpts.uploadFiles.IsEmpty() {
-		if cmdOpts.data != "" || !cmdOpts.jsonData.IsEmpty() || cmdOpts.jsonType {
-			return fmt.Errorf("--upload cannot be used with --data, --json or --json-type")
-		}
-		if !cmdOpts.silent {
-			ccolor.Cyanf("Uploading URL: POST %s\n", url)
-		}
-		resp, err := greq.Std().UploadWithData(url, cmdOpts.uploadFiles.Data(), cmdOpts.formData.Data(), optFns...)
-		if err != nil {
-			return fmt.Errorf("upload failed: %v", err)
-		}
-		return outputResponse(resp)
+		return handleUploadRequest(url, reqMethod, optFns)
 	}
 
 	// 快速设置 Content-Type: application/json
@@ -412,6 +402,25 @@ func handleNormalRequest(url string) error {
 	}
 
 	// 输出响应
+	return outputResponse(resp)
+}
+
+func handleUploadRequest(url, reqMethod string, optFns []greq.OptionFn) error {
+	if cmdOpts.data != "" || !cmdOpts.jsonData.IsEmpty() || cmdOpts.jsonType {
+		return fmt.Errorf("--upload cannot be used with --data, --json or --json-type")
+	}
+	if httpreq.IsNoBodyMethod(reqMethod) {
+		reqMethod = http.MethodPost
+	}
+	optFns = append(optFns, greq.WithMethod(reqMethod))
+
+	if !cmdOpts.silent {
+		ccolor.Cyanf("Uploading URL: %s %s\n", reqMethod, url)
+	}
+	resp, err := greq.Std().UploadWithData(url, cmdOpts.uploadFiles.Data(), cmdOpts.formData.Data(), optFns...)
+	if err != nil {
+		return fmt.Errorf("upload failed: %v", err)
+	}
 	return outputResponse(resp)
 }
 

@@ -150,6 +150,32 @@ func TestHandleNormalRequest_UploadFileWithFormData(t *testing.T) {
 	assert.Eq(t, "inhere", formName)
 }
 
+func TestHandleNormalRequest_UploadFileWithPutMethod(t *testing.T) {
+	var reqMethod string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqMethod = r.Method
+		err := r.ParseMultipartForm(10 << 20)
+		assert.NoErr(t, err)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	uploadFile := filepath.Join(t.TempDir(), "upload.txt")
+	err := os.WriteFile(uploadFile, []byte("hello upload"), 0644)
+	assert.NoErr(t, err)
+
+	resetCmdOpts()
+	cmdOpts.method = http.MethodPut
+	cmdOpts.silent = true
+	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
+	cmdOpts.uploadFiles.Set("file=" + uploadFile)
+
+	err = handleNormalRequest(server.URL)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, http.MethodPut, reqMethod)
+}
+
 func resetCmdOpts() {
 	cmdOpts.method = "GET"
 	cmdOpts.data = ""

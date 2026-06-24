@@ -355,6 +355,7 @@ greq -J name=inhere -J age=18 https://httpbin.org/post
 greq --json-type -d @body.json https://httpbin.org/post
 greq --json-type -d '{"name":"inhere"}' https://httpbin.org/post
 greq -U file=./photo.jpg -F name=inhere https://httpbin.org/post
+greq -X PUT -U file=./photo.jpg https://httpbin.org/put
 greq -r req.http                          # 发送 .http 文件
 greq -r req.http -V token=$API_TOKEN      # 带变量
 greq -O https://example.com/file.zip      # 当作下载链接
