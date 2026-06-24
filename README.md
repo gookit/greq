@@ -372,6 +372,7 @@ greq https://httpbin.org/get
 greq -J name=inhere -J age=18 https://httpbin.org/post
 greq --json-type -d @body.json https://httpbin.org/post
 greq --json-type -d '{"name":"inhere"}' https://httpbin.org/post
+greq -U file=./photo.jpg -F name=inhere https://httpbin.org/post
 greq -r req.http                          # send an .http file
 greq -r req.http -V token=$API_TOKEN      # with variables
 greq -O https://example.com/file.zip      # treat URL as download

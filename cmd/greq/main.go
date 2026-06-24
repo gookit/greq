@@ -30,28 +30,30 @@ var (
 
 var showVersion bool
 var cmdOpts = struct {
-	method   string
-	data     string
-	headers  cflag.KVString
-	formData cflag.KVString
-	jsonData cflag.KVString
-	timeout  int
-	output   string
-	raw      string
-	httpVars cflag.KVString // HTTP request variables
-	down     bool
-	verbose  bool
-	silent   bool
-	follow   bool
-	insecure bool
-	jsonType bool   // quick set Content-Type: application/json
-	agent    string // custom user-agent
-	headOnly bool   // show response headers only
+	method      string
+	data        string
+	headers     cflag.KVString
+	formData    cflag.KVString
+	jsonData    cflag.KVString
+	uploadFiles cflag.KVString
+	timeout     int
+	output      string
+	raw         string
+	httpVars    cflag.KVString // HTTP request variables
+	down        bool
+	verbose     bool
+	silent      bool
+	follow      bool
+	insecure    bool
+	jsonType    bool   // quick set Content-Type: application/json
+	agent       string // custom user-agent
+	headOnly    bool   // show response headers only
 }{
-	headers:  cflag.KVString{Sep: ":"},
-	formData: cflag.KVString{Sep: "="},
-	jsonData: cflag.KVString{Sep: "="},
-	httpVars: cflag.KVString{Sep: "="},
+	headers:     cflag.KVString{Sep: ":"},
+	formData:    cflag.KVString{Sep: "="},
+	jsonData:    cflag.KVString{Sep: "="},
+	uploadFiles: cflag.KVString{Sep: "="},
+	httpVars:    cflag.KVString{Sep: "="},
 }
 
 // 实现类似 curl 的http请求工具
@@ -73,6 +75,7 @@ func main() {
 	cmd.Var(&cmdOpts.headers, "header", `Custom HTTP header, allow multi. eg: "Foo: bar";;H`)
 	cmd.Var(&cmdOpts.formData, "form", `Custom HTTP form data, allow multi. eg: "key=value";;F`)
 	cmd.Var(&cmdOpts.jsonData, "json", `Custom HTTP JSON field, allow multi. eg: "key=value";;J`)
+	cmd.Var(&cmdOpts.uploadFiles, "upload", `Upload file field, allow multi. eg: "file=./a.txt";;U`)
 	cmd.IntVar(&cmdOpts.timeout, "timeout", 30, "Request timeout in seconds;;t")
 	cmd.StringVar(&cmdOpts.output, "output", "", "Output file for response;;o")
 	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file.
@@ -103,6 +106,9 @@ Request matching:
 
   # POST request with JSON data
   greq --json key=value https://example.com
+
+  # Upload file
+  greq -U file=./photo.jpg -F name=inhere https://example.com
 
   # Download file
   greq -O https://example.com/file.zip
@@ -324,6 +330,20 @@ func handleNormalRequest(url string) error {
 	// 设置请求头
 	for k, v := range cmdOpts.headers.Data() {
 		optFns = append(optFns, greq.WithHeader(k, v))
+	}
+
+	if !cmdOpts.uploadFiles.IsEmpty() {
+		if cmdOpts.data != "" || !cmdOpts.jsonData.IsEmpty() || cmdOpts.jsonType {
+			return fmt.Errorf("--upload cannot be used with --data, --json or --json-type")
+		}
+		if !cmdOpts.silent {
+			ccolor.Cyanf("Uploading URL: POST %s\n", url)
+		}
+		resp, err := greq.Std().UploadWithData(url, cmdOpts.uploadFiles.Data(), cmdOpts.formData.Data(), optFns...)
+		if err != nil {
+			return fmt.Errorf("upload failed: %v", err)
+		}
+		return outputResponse(resp)
 	}
 
 	// 快速设置 Content-Type: application/json

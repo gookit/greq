@@ -111,12 +111,52 @@ func TestHandleNormalRequest_DataFromFile(t *testing.T) {
 	assert.Eq(t, `{"name":"inhere"}`, reqBody)
 }
 
+func TestHandleNormalRequest_UploadFileWithFormData(t *testing.T) {
+	var reqMethod, reqContentType, fileBody, formName string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqMethod = r.Method
+		reqContentType = r.Header.Get("Content-Type")
+		err := r.ParseMultipartForm(10 << 20)
+		assert.NoErr(t, err)
+
+		file, _, err := r.FormFile("file")
+		assert.NoErr(t, err)
+		defer file.Close()
+
+		body, err := io.ReadAll(file)
+		assert.NoErr(t, err)
+		fileBody = string(body)
+		formName = r.FormValue("name")
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	uploadFile := filepath.Join(t.TempDir(), "upload.txt")
+	err := os.WriteFile(uploadFile, []byte("hello upload"), 0644)
+	assert.NoErr(t, err)
+
+	resetCmdOpts()
+	cmdOpts.silent = true
+	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
+	cmdOpts.uploadFiles.Set("file=" + uploadFile)
+	cmdOpts.formData.Set("name=inhere")
+
+	err = handleNormalRequest(server.URL)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, http.MethodPost, reqMethod)
+	assert.StrContains(t, reqContentType, "multipart/form-data")
+	assert.Eq(t, "hello upload", fileBody)
+	assert.Eq(t, "inhere", formName)
+}
+
 func resetCmdOpts() {
 	cmdOpts.method = "GET"
 	cmdOpts.data = ""
 	cmdOpts.headers = cflag.KVString{Sep: ":"}
 	cmdOpts.formData = cflag.KVString{Sep: "="}
 	cmdOpts.jsonData = cflag.KVString{Sep: "="}
+	cmdOpts.uploadFiles = cflag.KVString{Sep: "="}
 	cmdOpts.timeout = 30
 	cmdOpts.output = ""
 	cmdOpts.raw = ""
