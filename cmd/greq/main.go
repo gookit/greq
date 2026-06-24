@@ -81,8 +81,7 @@ func main() {
 	cmd.StringVar(&cmdOpts.raw, "raw", "", `Parse and send IDE .http format request file.
 Request matching:
  filepath#keywords  - match request by keywords in the file (comma-separated).
-                      When multiple requests match, an interactive prompt
-                      will let you pick one.
+    When multiple requests match, an interactive prompt will let you pick one.
 ;;r`)
 	cmd.Var(&cmdOpts.httpVars, "var", `(.http file)HTTP request variables, allow multi. eg: "key=value";;V`)
 
@@ -156,17 +155,19 @@ func runRequest(c *cflag.CFlags) error {
 }
 
 // handleRawRequest 处理IDE .http格式文件
-func handleRawRequest(filename string) error {
+// TODO 支持发送 string, 支持 @clip 读取剪切板数据
+func handleRawRequest(inputStr string) error {
+
 	var keywords []string
-	if strings.Contains(filename, "#") {
+	if strings.Contains(inputStr, "#") {
 		// 处理 filepath#keywords 格式
-		parts := strings.SplitN(filename, "#", 2)
-		filename = parts[0]
+		parts := strings.SplitN(inputStr, "#", 2)
+		inputStr = parts[0]
 		keywords = strings.Split(parts[1], ",")
 	}
 
 	// 解析 .http 文件格式
-	hf, err := httpfile.ParseHTTPFile(filename)
+	hf, err := httpfile.ParseHTTPFile(inputStr)
 	if err != nil {
 		return fmt.Errorf("failed to parse HTTP file: %v", err)
 	}
@@ -192,6 +193,7 @@ func handleRawRequest(filename string) error {
 		if request.Body != "" {
 			ccolor.Printf("  Body: %s\n", strutil.Substr(request.Body, 0, 256))
 		}
+		fmt.Println("────────────────────────────────────────────────────────────")
 	}
 
 	// 发送请求
@@ -390,6 +392,7 @@ func handleNormalRequest(url string) error {
 			ccolor.Cyanln("Request   Body:")
 			fmt.Printf("  %s\n\n", string(bodyData))
 		}
+		fmt.Println("────────────────────────────────────────────────────────────")
 		return nil
 	}
 
@@ -494,30 +497,6 @@ func getFilenameFromURL(url string, resp *greq.Response) string {
 
 	// 默认文件名
 	return fmt.Sprintf("download_%d", time.Now().Unix())
-}
-
-// handleDownloadFromResponse 处理从响应下载文件
-func handleDownloadFromResponse(url string, resp *greq.Response) error {
-	if resp.IsFail() {
-		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
-	}
-
-	// 获取文件名
-	filename := getFilenameFromURL(url, resp)
-	if cmdOpts.output != "" {
-		filename = cmdOpts.output
-	}
-
-	// 写入文件
-	n, err := resp.SaveFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to save file: %v", err)
-	}
-
-	if !cmdOpts.silent {
-		ccolor.Successf("Download completed: %s (%s)\n", filename, formatBytes(n))
-	}
-	return nil
 }
 
 // downloadWithProgress 带进度显示的下载
@@ -683,7 +662,6 @@ func pickRequest(hf *httpfile.HTTPFile, keywords []string) (*httpfile.HTTPReques
 
 	// 多命中 — 弹选择菜单。key 用索引字符串以保持稳定。
 	opts := make(map[string]string, len(matches))
-	order := make([]string, 0, len(matches))
 	for i, req := range matches {
 		key := fmt.Sprintf("%d", i)
 		label := req.Name
@@ -691,10 +669,9 @@ func pickRequest(hf *httpfile.HTTPFile, keywords []string) (*httpfile.HTTPReques
 			label = fmt.Sprintf("%s %s", req.Method, req.URL)
 		}
 		opts[key] = label
-		order = append(order, key)
 	}
 	title := fmt.Sprintf("Multiple requests matched (%d), select one:", len(matches))
-	chosen := interact.SelectOne(title, opts, order[0])
+	chosen := interact.SelectOneKey(title, opts, "0")
 	if chosen == "" {
 		return nil, fmt.Errorf("no selection made")
 	}

@@ -8,7 +8,6 @@ import (
 	gourl "net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/netutil/httpctype"
@@ -545,23 +544,6 @@ func NewOpt2(fns []OptionFn, method string) *Options {
 func orCreate(opt *Options) *Options {
 	if opt == nil {
 		opt = &Options{}
-	}
-	return opt
-}
-
-func ensureOpt(opt *Options) *Options {
-	if opt == nil {
-		opt = &Options{}
-	}
-	if opt.Context == nil {
-		opt.Context = context.Background()
-	}
-
-	if opt.Timeout > 0 && opt.TCancelFn == nil {
-		opt.Context, opt.TCancelFn = context.WithTimeout(
-			opt.Context,
-			time.Duration(opt.Timeout)*time.Millisecond,
-		)
 	}
 	return opt
 }
