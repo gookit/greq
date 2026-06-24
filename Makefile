@@ -27,7 +27,7 @@ BUILD_DIR := cmd
 # Version info (can be overridden by env vars or git tags)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%S")
 
 # Ldflags for version injection
 LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT) -X main.BuildTime=$(BUILD_TIME)"

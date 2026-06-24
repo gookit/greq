@@ -68,7 +68,7 @@ func main() {
 
 	// 添加选项
 	cmd.StringVar(&cmdOpts.method, "method", "GET", "HTTP method;;X")
-	cmd.StringVar(&cmdOpts.data, "data", "", "HTTP request body data;;d")
+	cmd.StringVar(&cmdOpts.data, "data", "", "HTTP request body data, use @file to read from file;;d")
 	cmd.StringVar(&cmdOpts.agent, "agent", "", "Custom set User-Agent;;A")
 	cmd.Var(&cmdOpts.headers, "header", `Custom HTTP header, allow multi. eg: "Foo: bar";;H`)
 	cmd.Var(&cmdOpts.formData, "form", `Custom HTTP form data, allow multi. eg: "key=value";;F`)
@@ -337,7 +337,11 @@ func handleNormalRequest(url string) error {
 	// 准备请求数据
 	var bodyData []byte
 	if cmdOpts.data != "" {
-		bodyData = []byte(cmdOpts.data)
+		var err error
+		bodyData, err = buildDataBody(cmdOpts.data)
+		if err != nil {
+			return err
+		}
 	} else if !cmdOpts.jsonData.IsEmpty() {
 		optFns = append(optFns, greq.WithContentType(httpctype.JSON))
 		var err error
@@ -389,6 +393,19 @@ func handleNormalRequest(url string) error {
 
 	// 输出响应
 	return outputResponse(resp)
+}
+
+func buildDataBody(data string) ([]byte, error) {
+	if !strings.HasPrefix(data, "@") {
+		return []byte(data), nil
+	}
+
+	filename := strings.TrimPrefix(data, "@")
+	bodyData, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("read data file %s failed: %w", filename, err)
+	}
+	return bodyData, nil
 }
 
 func buildJSONBody(fields map[string]string) ([]byte, error) {

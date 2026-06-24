@@ -370,6 +370,7 @@ go install github.com/gookit/greq/cmd/greq@latest
 
 greq https://httpbin.org/get
 greq -J name=inhere -J age=18 https://httpbin.org/post
+greq --json-type -d @body.json https://httpbin.org/post
 greq --json-type -d '{"name":"inhere"}' https://httpbin.org/post
 greq -r req.http                          # send an .http file
 greq -r req.http -V token=$API_TOKEN      # with variables

@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -79,6 +80,34 @@ func TestHandleNormalRequest_JSONTypeWithRawData(t *testing.T) {
 
 	assert.NoErr(t, err)
 	assert.Eq(t, httpctype.JSON, reqContentType)
+	assert.Eq(t, `{"name":"inhere"}`, reqBody)
+}
+
+func TestHandleNormalRequest_DataFromFile(t *testing.T) {
+	var reqMethod, reqBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		assert.NoErr(t, err)
+
+		reqMethod = r.Method
+		reqBody = string(body)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	bodyFile := filepath.Join(t.TempDir(), "body.json")
+	err := os.WriteFile(bodyFile, []byte(`{"name":"inhere"}`), 0644)
+	assert.NoErr(t, err)
+
+	resetCmdOpts()
+	cmdOpts.silent = true
+	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
+	cmdOpts.data = "@" + bodyFile
+
+	err = handleNormalRequest(server.URL)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, http.MethodPost, reqMethod)
 	assert.Eq(t, `{"name":"inhere"}`, reqBody)
 }
 
