@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/gookit/cliui v0.2.1
-	github.com/gookit/goutil v0.7.5
+	github.com/gookit/goutil v0.7.6
 	github.com/gookit/greq v0.0.0
 )
 
