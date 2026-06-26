@@ -441,6 +441,19 @@ func TestWithHeader(t *testing.T) {
 	assert.Equal(t, "value", opt.Header.Get("X-Custom"))
 }
 
+func TestWithHeaders(t *testing.T) {
+	fn := greq.WithHeaders(map[string]string{
+		"X-Custom": "value",
+		"X-Trace":  "abc",
+	})
+	opt := &greq.Options{
+		Header: make(http.Header),
+	}
+	fn(opt)
+	assert.Equal(t, "value", opt.Header.Get("X-Custom"))
+	assert.Equal(t, "abc", opt.Header.Get("X-Trace"))
+}
+
 func TestWithBody(t *testing.T) {
 	fn := greq.WithBody("test body")
 	opt := &greq.Options{}

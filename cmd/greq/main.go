@@ -209,10 +209,7 @@ func sendParsedRequest(request *httpfile.HTTPRequest) error {
 		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
 	}
 
-	// 设置头部
-	for k, v := range request.Headers {
-		optFns = append(optFns, greq.WithHeader(k, v))
-	}
+	optFns = append(optFns, greq.WithHeaders(request.Headers))
 
 	bodyData := []byte(request.Body)
 
@@ -239,10 +236,7 @@ func handleDownload(url string) error {
 		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
 	}
 
-	// 设置请求头
-	for k, v := range cmdOpts.headers.Data() {
-		optFns = append(optFns, greq.WithHeader(k, v))
-	}
+	optFns = append(optFns, greq.WithHeaders(cmdOpts.headers.Data()))
 
 	// 获取文件名
 	filename := cmdOpts.output
@@ -329,10 +323,7 @@ func handleNormalRequest(url string) error {
 		optFns = append(optFns, greq.WithTimeout(cmdOpts.timeout*1000)) // 转换为毫秒
 	}
 
-	// 设置请求头
-	for k, v := range cmdOpts.headers.Data() {
-		optFns = append(optFns, greq.WithHeader(k, v))
-	}
+	optFns = append(optFns, greq.WithHeaders(cmdOpts.headers.Data()))
 
 	if !cmdOpts.uploadFiles.IsEmpty() {
 		return handleUploadRequest(url, reqMethod, optFns)

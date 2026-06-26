@@ -582,6 +582,15 @@ func WithHeader(key, value string) OptionFn {
 	}
 }
 
+// WithHeaders set multiple headers.
+func WithHeaders(headers map[string]string) OptionFn {
+	return func(opt *Options) {
+		for key, value := range headers {
+			opt.Header.Set(key, value)
+		}
+	}
+}
+
 // WithBody set body data
 func WithBody(body any) OptionFn {
 	return func(opt *Options) {
