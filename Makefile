@@ -22,7 +22,7 @@ GOMOD := $(GOCMD) mod
 BINS := greq gbench
 
 # Build directory
-BUILD_DIR := cmd
+BUILD_DIR := dist
 
 # Version info (can be overridden by env vars or git tags)
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -58,26 +58,26 @@ all: build
 .PHONY: build
 build: ## Build all binaries for current platform
 	@echo "Building binaries for $(GOOS)/$(GOARCH)..."
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "  Building $$bin..."; \
-		(cd cmd/$$bin && $(GOBUILD) $(LDFLAGS) -o ../$$bin$(BINARY_EXT) .) || exit 1; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin$(BINARY_EXT) .) || exit 1; \
 	done
 	@echo "Build complete. Binaries in $(BUILD_DIR)/"
 
 .PHONY: build-greq
 build-greq: ## Build greq binary only
 	@echo "Building greq..."
-	@mkdir -p $(BUILD_DIR)
-	cd cmd/greq && $(GOBUILD) $(LDFLAGS) -o ../greq$(BINARY_EXT) .
-	upx -6 --no-progress $(BUILD_DIR)/greq$(BINARY_EXT)
+	@mkdir -p $(BUILD_DIR)/greq
+	cd cmd/greq && $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/greq/greq$(BINARY_EXT) .
+	upx -6 --no-progress $(BUILD_DIR)/greq/greq$(BINARY_EXT)
 
 .PHONY: build-gbench
 build-gbench: ## Build gbench binary only
 	@echo "Building gbench..."
-	@mkdir -p $(BUILD_DIR)
-	cd cmd/gbench && $(GOBUILD) $(LDFLAGS) -o ../gbench$(BINARY_EXT) .
-	upx -6 --no-progress $(BUILD_DIR)/gbench$(BINARY_EXT)
+	@mkdir -p $(BUILD_DIR)/gbench
+	cd cmd/gbench && $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/gbench/gbench$(BINARY_EXT) .
+	upx -6 --no-progress $(BUILD_DIR)/gbench/gbench$(BINARY_EXT)
 
 # ============================================================================
 # Cross-platform build targets
@@ -90,20 +90,20 @@ build-linux: build-linux-amd64 build-linux-arm64 ## Build binaries for Linux (am
 
 .PHONY: build-linux-amd64
 build-linux-amd64: ## Build binaries for Linux amd64
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/amd64..."; \
-		(cd cmd/$$bin && GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-amd64 .) || exit 1; \
-		chmod a+x $(BUILD_DIR)/$$bin-linux-amd64; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-linux-amd64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin/$$bin-linux-amd64; \
 	done
 
 .PHONY: build-linux-arm64
 build-linux-arm64: ## Build binaries for Linux arm64
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for linux/arm64..."; \
-		(cd cmd/$$bin && GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-linux-arm64 .) || exit 1; \
-		chmod a+x $(BUILD_DIR)/$$bin-linux-arm64; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-linux-arm64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin/$$bin-linux-arm64; \
 	done
 
 # macOS builds
@@ -113,20 +113,20 @@ build-darwin: build-darwin-amd64 build-darwin-arm64 ## Build binaries for macOS 
 
 .PHONY: build-darwin-amd64
 build-darwin-amd64: ## Build binaries for macOS amd64 (Intel)
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/amd64..."; \
-		(cd cmd/$$bin && GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-amd64 .) || exit 1; \
-		chmod a+x $(BUILD_DIR)/$$bin-darwin-amd64; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-darwin-amd64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin/$$bin-darwin-amd64; \
 	done
 
 .PHONY: build-darwin-arm64
 build-darwin-arm64: ## Build binaries for macOS arm64 (Apple Silicon)
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for darwin/arm64..."; \
-		(cd cmd/$$bin && GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-darwin-arm64 .) || exit 1; \
-		chmod a+x $(BUILD_DIR)/$$bin-darwin-arm64; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-darwin-arm64 .) || exit 1; \
+		chmod a+x $(BUILD_DIR)/$$bin/$$bin-darwin-arm64; \
 	done
 
 # Windows builds
@@ -136,29 +136,51 @@ build-windows: build-windows-amd64 build-windows-arm64 ## Build binaries for Win
 
 .PHONY: build-windows-amd64
 build-windows-amd64: ## Build binaries for Windows amd64
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for windows/amd64..."; \
-		(cd cmd/$$bin && GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-amd64.exe .) || exit 1; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-windows-amd64.exe .) || exit 1; \
 	done
 
 .PHONY: build-windows-arm64
 build-windows-arm64: ## Build binaries for Windows arm64
-	@mkdir -p $(BUILD_DIR)
 	@for bin in $(BINS); do \
 		echo "Building $$bin for windows/arm64..."; \
-		(cd cmd/$$bin && GOOS=windows GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../$$bin-windows-arm64.exe .) || exit 1; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		(cd cmd/$$bin && GOOS=windows GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o ../../$(BUILD_DIR)/$$bin/$$bin-windows-arm64.exe .) || exit 1; \
 	done
 
 # Build all platforms
 .PHONY: build-all
-build-all: build-linux build-darwin build-windows ## Build binaries for all platforms
+build-all: dump-info latest-yaml build-linux build-darwin build-windows ## Build binaries for all platforms
 	@echo "🎉 All platform builds complete."
-	@ls -lah $(BUILD_DIR)/
+	@ls -lah $(BUILD_DIR)/greq/ $(BUILD_DIR)/gbench/
 
 # ============================================================================
 # Development targets
 # ============================================================================
+
+## dump-info: dump build info
+dump-info:
+	@echo "Build Info:"
+	@echo "  VERSION: $(VERSION)"
+	@echo "  GIT_HASH: $(GIT_HASH)"
+	@echo "  BUILD_TIME: $(BUILD_TIME)"
+
+## latest-yaml: generate latest.yaml release metadata
+latest-yaml:
+	@for bin in $(BINS); do \
+		desc="Lightweight HTTP request tool by Go, like curl."; \
+		if [ "$$bin" = "gbench" ]; then desc="Lightweight Benchmark HTTP requests, like ab."; fi; \
+		mkdir -p $(BUILD_DIR)/$$bin; \
+		{ \
+			echo "name: $$bin"; \
+			echo "version: $(VERSION)"; \
+			echo "released_at: $(BUILD_TIME)"; \
+			echo "description: $$desc"; \
+		} > $(BUILD_DIR)/$$bin/latest.yaml; \
+		echo "   → $(BUILD_DIR)/$$bin/latest.yaml"; \
+	done
 
 .PHONY: test
 test: ## Run all tests (library + cmd submodules)
@@ -258,14 +280,13 @@ help: ## Show this help message
 release: build-all ## Create release archives for all platforms (tar.gz for linux/macOS, zip for Windows)
 	@echo "Creating release archives..."
 	@mkdir -p release
-	@cd $(BUILD_DIR) && \
-	for bin in $(BINS); do \
-		tar -czf ../release/$$bin-$(VERSION)-linux-amd64.tar.gz $$bin-linux-amd64; \
-		tar -czf ../release/$$bin-$(VERSION)-linux-arm64.tar.gz $$bin-linux-arm64; \
-		tar -czf ../release/$$bin-$(VERSION)-darwin-amd64.tar.gz $$bin-darwin-amd64; \
-		tar -czf ../release/$$bin-$(VERSION)-darwin-arm64.tar.gz $$bin-darwin-arm64; \
-		zip -q ../release/$$bin-$(VERSION)-windows-amd64.zip $$bin-windows-amd64.exe; \
-		zip -q ../release/$$bin-$(VERSION)-windows-arm64.zip $$bin-windows-arm64.exe; \
+	@for bin in $(BINS); do \
+		tar -czf release/$$bin-$(VERSION)-linux-amd64.tar.gz -C $(BUILD_DIR)/$$bin $$bin-linux-amd64; \
+		tar -czf release/$$bin-$(VERSION)-linux-arm64.tar.gz -C $(BUILD_DIR)/$$bin $$bin-linux-arm64; \
+		tar -czf release/$$bin-$(VERSION)-darwin-amd64.tar.gz -C $(BUILD_DIR)/$$bin $$bin-darwin-amd64; \
+		tar -czf release/$$bin-$(VERSION)-darwin-arm64.tar.gz -C $(BUILD_DIR)/$$bin $$bin-darwin-arm64; \
+		(cd $(BUILD_DIR)/$$bin && zip -q ../../release/$$bin-$(VERSION)-windows-amd64.zip $$bin-windows-amd64.exe); \
+		(cd $(BUILD_DIR)/$$bin && zip -q ../../release/$$bin-$(VERSION)-windows-arm64.zip $$bin-windows-arm64.exe); \
 	done
 	@echo "Release archives created in release/"
 	@ls -la release/
