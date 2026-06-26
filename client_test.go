@@ -62,6 +62,16 @@ func TestClient_Send(t *testing.T) {
 	assert.Eq(t, "custom-cli/1.0", headers["User-Agent"])
 }
 
+func TestClient_NewRequestWithHostHeader(t *testing.T) {
+	req, err := greq.New(testBaseURL).NewRequest(http.MethodGet, "/get",
+		greq.WithHeader("Host", "hyy-local-service-cv-py"),
+	)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, "hyy-local-service-cv-py", req.Host)
+	assert.Eq(t, "", req.Header.Get("Host"))
+}
+
 func TestClient_GetDo(t *testing.T) {
 	resp, err := greq.New(testBaseURL).
 		JSONType().

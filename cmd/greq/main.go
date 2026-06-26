@@ -385,6 +385,9 @@ func handleNormalRequest(url string) error {
 			return nil
 		}
 		ccolor.Cyanln("Request Header:")
+		if req.Host != "" {
+			ccolor.Printf("  <green>Host</>: %s\n", req.Host)
+		}
 		for k, v := range req.Header {
 			ccolor.Printf("  <green>%s</>: %s\n", k, strings.Join(v, ", "))
 		}
@@ -454,6 +457,7 @@ func buildJSONBody(fields map[string]string) ([]byte, error) {
 // outputResponse 输出响应结果
 func outputResponse(resp *greq.Response) error {
 	if cmdOpts.verbose || cmdOpts.headOnly {
+		ccolor.Infof("Response status=%d, cost=%dms:\n", resp.StatusCode, resp.CostTime)
 		ccolor.Infoln("Response Headers:")
 		for k, v := range resp.Header {
 			ccolor.Printf("  %s: %s\n", k, strings.Join(v, ", "))
@@ -467,12 +471,12 @@ func outputResponse(resp *greq.Response) error {
 	}
 
 	// 输出到文件或标准输出
-	if cmdOpts.output != "" {
+	if cmdOpts.output != "" && cmdOpts.output != "stdout" {
 		return os.WriteFile(cmdOpts.output, []byte(resp.BodyString()), 0644)
 	}
 
 	// 输出到标准输出
-	fmt.Print(resp.BodyString())
+	fmt.Println(resp.BodyString())
 	return nil
 }
 

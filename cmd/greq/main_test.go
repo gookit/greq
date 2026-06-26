@@ -83,6 +83,45 @@ func TestHandleNormalRequest_JSONTypeWithRawData(t *testing.T) {
 	assert.Eq(t, `{"name":"inhere"}`, reqBody)
 }
 
+func TestHandleNormalRequest_HeaderContentType(t *testing.T) {
+	var reqContentType string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqContentType = r.Header.Get("Content-Type")
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	resetCmdOpts()
+	cmdOpts.silent = true
+	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
+	cmdOpts.data = "hello"
+	cmdOpts.headers.Set("Content-Type: text/plain")
+
+	err := handleNormalRequest(server.URL)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, "text/plain", reqContentType)
+}
+
+func TestHandleNormalRequest_CustomHeader(t *testing.T) {
+	var reqToken string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqToken = r.Header.Get("X-Token")
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	resetCmdOpts()
+	cmdOpts.silent = true
+	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
+	cmdOpts.headers.Set("X-Token: abc")
+
+	err := handleNormalRequest(server.URL)
+
+	assert.NoErr(t, err)
+	assert.Eq(t, "abc", reqToken)
+}
+
 func TestHandleNormalRequest_DataFromFile(t *testing.T) {
 	var reqMethod, reqBody string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -112,10 +151,11 @@ func TestHandleNormalRequest_DataFromFile(t *testing.T) {
 }
 
 func TestHandleNormalRequest_UploadFileWithFormData(t *testing.T) {
-	var reqMethod, reqContentType, fileBody, formName string
+	var reqMethod, reqContentType, reqToken, fileBody, formName string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqMethod = r.Method
 		reqContentType = r.Header.Get("Content-Type")
+		reqToken = r.Header.Get("X-Token")
 		err := r.ParseMultipartForm(10 << 20)
 		assert.NoErr(t, err)
 
@@ -140,12 +180,14 @@ func TestHandleNormalRequest_UploadFileWithFormData(t *testing.T) {
 	cmdOpts.output = filepath.Join(t.TempDir(), "resp.txt")
 	cmdOpts.uploadFiles.Set("file=" + uploadFile)
 	cmdOpts.formData.Set("name=inhere")
+	cmdOpts.headers.Set("X-Token: abc")
 
 	err = handleNormalRequest(server.URL)
 
 	assert.NoErr(t, err)
 	assert.Eq(t, http.MethodPost, reqMethod)
 	assert.StrContains(t, reqContentType, "multipart/form-data")
+	assert.Eq(t, "abc", reqToken)
 	assert.Eq(t, "hello upload", fileBody)
 	assert.Eq(t, "inhere", formName)
 }

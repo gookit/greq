@@ -524,6 +524,7 @@ func (h *Client) SendRaw(raw string, varMp map[string]string) (*Response, error)
 	if len(rawReq.Headers) > 0 {
 		httpreq.SetHeaderMap(req, rawReq.Headers)
 	}
+	applySpecialHeaders(req)
 	// apply default content type
 	if len(h.ContentType) > 0 && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", h.ContentType)
@@ -725,8 +726,16 @@ func (h *Client) NewRequestWithOptions(url string, opt *Options) (*http.Request,
 	if len(cType) > 0 {
 		req.Header.Set(httpheader.ContentType, cType)
 	}
+	applySpecialHeaders(req)
 
 	return req, err
+}
+
+func applySpecialHeaders(req *http.Request) {
+	if host := req.Header.Get("Host"); host != "" {
+		req.Host = host
+		req.Header.Del("Host")
+	}
 }
 
 // String request to string.
