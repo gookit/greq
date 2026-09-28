@@ -3,7 +3,7 @@ module github.com/gookit/greq/cmd/greq
 go 1.23
 
 require (
-	github.com/gookit/cliui v0.4.0
+	github.com/gookit/cliui v0.5.1
 	github.com/gookit/goutil v0.8.0
 	github.com/gookit/greq v0.0.0
 )
