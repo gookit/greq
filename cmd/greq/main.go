@@ -636,7 +636,7 @@ func formatBytes(bytes int) string {
 // pickRequest 从 .http 文件中按 keywords 过滤请求；
 //   - 0 命中：报错
 //   - 1 命中：直接返回
-//   - 多命中：使用 cliui interact.SelectOne 让用户从命中列表里选一个
+//   - 多命中：使用 cliui interact.SelectOneKeyE 让用户从命中列表里选一个
 func pickRequest(hf *httpfile.HTTPFile, keywords []string) (*httpfile.HTTPRequest, error) {
 	matches := hf.SearchName(keywords...)
 	if len(matches) == 0 {
@@ -666,7 +666,12 @@ func pickRequest(hf *httpfile.HTTPFile, keywords []string) (*httpfile.HTTPReques
 		opts[key] = label
 	}
 	title := fmt.Sprintf("Multiple requests matched (%d), select one:", len(matches))
-	chosen := interact.SelectOneKey(title, opts, "0")
+	// 用 *E 变体以保留错误(取消/EOF 等)；cliui v0.5.2 起同时提供旧的单返回值签名，
+	// v0.5.0/v0.5.1 那两个版本只有 (value, error) 形式。
+	chosen, err := interact.SelectOneKeyE(title, opts, "0")
+	if err != nil {
+		return nil, err
+	}
 	if chosen == "" {
 		return nil, fmt.Errorf("no selection made")
 	}
