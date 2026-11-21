@@ -1,7 +1,7 @@
 github.com/gookit/assert v0.1.1 h1:lh3GcawXe/p+cU7ESTZ5Ui3Sm/x8JWpIis4/1aF0mY0=
 github.com/gookit/assert v0.1.1/go.mod h1:jS5bmIVQZTIwk42uXl4lyj4iaaxx32tqH16CFj0VX2E=
-github.com/gookit/cliui v0.5.3 h1:KZmX5lrlTAdB3Pi15tlabkTYpmEjxTgcCBEzs90UEcU=
-github.com/gookit/cliui v0.5.3/go.mod h1:Hl9kmo18nFLlDVxMB6A0waNBL4Y5k3msFuuEFF1tQkM=
+github.com/gookit/cliui v0.5.4 h1:MWhOKZ9aNbJ7UCEPaBy6gucytWAYhdlQudtUyG21oBE=
+github.com/gookit/cliui v0.5.4/go.mod h1:zwTQnfY1SVFEEU8FzUIYr424Sr1jz+Al0Y+N/MxvwSs=
 github.com/gookit/color v1.6.3 h1:m6E49x+KftGaspcLtPLMsyci2ARhWIUW0PUV1owMlhs=
 github.com/gookit/color v1.6.3/go.mod h1:9ACFc7/1IpHGBW8RwuDm/0YEnhg3dwwXpoMsmtyHfjs=
 github.com/gookit/goutil v0.9.0 h1:PtudCWU0PfiB0UjRdY2dXr5ugw8o4+KPBwDRBQHztSU=

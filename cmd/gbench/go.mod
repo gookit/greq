@@ -3,7 +3,7 @@ module github.com/gookit/greq/cmd/gbench
 go 1.23
 
 require (
-	github.com/gookit/cliui v0.5.3
+	github.com/gookit/cliui v0.5.4
 	github.com/gookit/goutil v0.9.0
 	github.com/gookit/greq v0.0.0
 )
